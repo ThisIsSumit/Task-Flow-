@@ -91,6 +91,7 @@ lib/
 
 ## Screenshots
 ![Image](https://github.com/user-attachments/assets/62487743-32f6-4198-92a8-dbc5f4dbdda4)
+![Image](https://github.com/user-attachments/assets/1ae6c27f-88d4-4105-b72a-1615852b0c52)
 ![Image](https://github.com/user-attachments/assets/b84da426-f32b-4c0f-9ded-da437a73ad71)
 ![Image](https://github.com/user-attachments/assets/0ad3bf5a-7c91-4731-b0ee-28877be81cce)
 
