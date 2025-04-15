@@ -4,34 +4,34 @@ import '../data/services/auth_service.dart';
 
 class AuthController extends GetxController {
   final AuthService _authService = Get.find<AuthService>();
-  
+
   final nameController = TextEditingController();
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
-  
+
   final RxBool isLogin = true.obs;
   final RxBool isLoading = false.obs;
   final RxBool obscurePassword = true.obs;
-  
+
   void toggleAuthMode() {
     isLogin.toggle();
     clearControllers();
   }
-  
+
   void togglePasswordVisibility() {
     obscurePassword.toggle();
   }
-  
+
   void clearControllers() {
     nameController.clear();
     emailController.clear();
     passwordController.clear();
   }
-  
+
   Future<void> handleAuth() async {
     final email = emailController.text.trim();
     final password = passwordController.text.trim();
-    
+
     // Basic validation
     if (email.isEmpty || password.isEmpty) {
       Get.snackbar(
@@ -43,7 +43,7 @@ class AuthController extends GetxController {
       );
       return;
     }
-    
+
     if (!isLogin.value && nameController.text.trim().isEmpty) {
       Get.snackbar(
         'Error',
@@ -54,21 +54,21 @@ class AuthController extends GetxController {
       );
       return;
     }
-    
+
     try {
       isLoading.value = true;
-      
+
       if (isLogin.value) {
         await _authService.signIn(email, password);
       } else {
         final name = nameController.text.trim();
         await _authService.signUp(name, email, password);
       }
-      
+
       clearControllers();
     } catch (e) {
       String errorMessage = 'An error occurred. Please try again.';
-      
+
       if (e.toString().contains('user-not-found')) {
         errorMessage = 'No user found with this email.';
       } else if (e.toString().contains('wrong-password')) {
@@ -80,7 +80,7 @@ class AuthController extends GetxController {
       } else if (e.toString().contains('invalid-email')) {
         errorMessage = 'Invalid email format.';
       }
-      
+
       Get.snackbar(
         'Error',
         errorMessage,
@@ -92,12 +92,12 @@ class AuthController extends GetxController {
       isLoading.value = false;
     }
   }
-  
-  @override
-  void onClose() {
-    nameController.dispose();
-    emailController.dispose();
-    passwordController.dispose();
-    super.onClose();
-  }
+
+  // @override
+  // void onClose() {
+  //   nameController.dispose();
+  //   emailController.dispose();
+  //   passwordController.dispose();
+  //   super.onClose();
+  // }
 }

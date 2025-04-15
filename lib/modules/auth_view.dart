@@ -3,6 +3,8 @@ import 'package:get/get.dart';
 import '../controllers/auth_controller.dart';
 
 class AuthView extends GetView<AuthController> {
+  const AuthView({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -53,10 +55,12 @@ class AuthView extends GetView<AuthController> {
                       SizedBox(height: 16),
                       Text(
                         'TaskFlow',
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
+                        style: Theme.of(
+                          context,
+                        ).textTheme.headlineSmall?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ],
                   ),
@@ -65,9 +69,9 @@ class AuthView extends GetView<AuthController> {
                 Text(
                   controller.isLogin.value ? 'Welcome Back' : 'Create Account',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
                 SizedBox(height: 8),
                 Text(
@@ -75,113 +79,123 @@ class AuthView extends GetView<AuthController> {
                       ? 'Sign in to continue'
                       : 'Get started with TaskFlow',
                   style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: Colors.white.withOpacity(0.8),
-                      ),
+                    color: Colors.white.withOpacity(0.8),
+                  ),
                 ),
                 SizedBox(height: 32),
                 // Name Field (only visible in sign up)
-                Obx(() => !controller.isLogin.value
-                    ? Column(
-                        children: [
-                          TextFormField(
-                            controller: controller.nameController,
-                            style: TextStyle(color: Colors.white),
-                            decoration: InputDecoration(
-                              labelText: 'Full Name',
-                              labelStyle:
-                                  TextStyle(color: Colors.white.withOpacity(0.7)),
-                              prefixIcon: Icon(Icons.person,
-                                  color: Colors.white.withOpacity(0.7)),
-                              enabledBorder: UnderlineInputBorder(
-                                borderSide: BorderSide(
-                                    color: Colors.white.withOpacity(0.5)),
+                Obx(
+                  () =>
+                      !controller.isLogin.value
+                          ? Column(
+                            children: [
+                              TextFormField(
+                                controller: controller.nameController,
+                                style: TextStyle(color: Colors.black),
+                                decoration: InputDecoration(
+                                  labelText: 'Full Name',
+                                  labelStyle: TextStyle(color: Colors.grey),
+                                  prefixIcon: Icon(
+                                    Icons.person,
+                                    color: Colors.grey,
+                                  ),
+                                  enabledBorder: UnderlineInputBorder(
+                                    borderSide: BorderSide(color: Colors.grey),
+                                  ),
+                                  focusedBorder: UnderlineInputBorder(
+                                    borderSide: BorderSide(color: Colors.grey),
+                                  ),
+                                ),
                               ),
-                              focusedBorder: UnderlineInputBorder(
-                                borderSide: BorderSide(color: Colors.white),
-                              ),
-                            ),
-                          ),
-                          SizedBox(height: 20),
-                        ],
-                      )
-                    : SizedBox.shrink()),
+                              SizedBox(height: 20),
+                            ],
+                          )
+                          : SizedBox.shrink(),
+                ),
                 // Email Field
                 TextFormField(
                   controller: controller.emailController,
                   keyboardType: TextInputType.emailAddress,
-                  style: TextStyle(color: Colors.white),
+                  style: TextStyle(color: Colors.black),
                   decoration: InputDecoration(
                     labelText: 'Email',
-                    labelStyle: TextStyle(color: Colors.white.withOpacity(0.7)),
-                    prefixIcon:
-                        Icon(Icons.email, color: Colors.white.withOpacity(0.7)),
+                    labelStyle: TextStyle(color: Colors.grey),
+                    prefixIcon: Icon(Icons.email, color: Colors.grey),
                     enabledBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: Colors.white.withOpacity(0.5)),
+                      borderSide: BorderSide(color: Colors.grey),
                     ),
                     focusedBorder: UnderlineInputBorder(
-                      borderSide: BorderSide(color: Colors.white),
+                      borderSide: BorderSide(color: Colors.grey),
                     ),
                   ),
                 ),
                 SizedBox(height: 20),
                 // Password Field
-                Obx(() => TextFormField(
-                      controller: controller.passwordController,
-                      obscureText: controller.obscurePassword.value,
-                      style: TextStyle(color: Colors.white),
-                      decoration: InputDecoration(
-                        labelText: 'Password',
-                        labelStyle:
-                            TextStyle(color: Colors.white.withOpacity(0.7)),
-                        prefixIcon: Icon(Icons.lock,
-                            color: Colors.white.withOpacity(0.7)),
-                        suffixIcon: IconButton(
-                          icon: Icon(
-                            controller.obscurePassword.value
-                                ? Icons.visibility_off
-                                : Icons.visibility,
-                            color: Colors.white.withOpacity(0.7),
-                          ),
-                          onPressed: controller.togglePasswordVisibility,
+                Obx(
+                  () => TextFormField(
+                    controller: controller.passwordController,
+                    obscureText: controller.obscurePassword.value,
+                    style: TextStyle(color: Colors.black),
+                    decoration: InputDecoration(
+                      labelText: 'Password',
+                      labelStyle: TextStyle(color: Colors.grey),
+                      prefixIcon: Icon(Icons.lock, color: Colors.grey),
+                      suffixIcon: IconButton(
+                        icon: Icon(
+                          controller.obscurePassword.value
+                              ? Icons.visibility_off
+                              : Icons.visibility,
+                          color: Colors.grey,
                         ),
-                        enabledBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: Colors.white.withOpacity(0.5)),
-                        ),
-                        focusedBorder: UnderlineInputBorder(
-                          borderSide: BorderSide(color: Colors.white),
-                        ),
+                        onPressed: controller.togglePasswordVisibility,
                       ),
-                    )),
+                      enabledBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(color: Colors.grey),
+                      ),
+                      focusedBorder: UnderlineInputBorder(
+                        borderSide: BorderSide(color: Colors.grey),
+                      ),
+                    ),
+                  ),
+                ),
                 SizedBox(height: 40),
                 // Submit Button
-                Obx(() => SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton(
-                        onPressed:
-                            controller.isLoading.value ? null : controller.handleAuth,
-                        style: ElevatedButton.styleFrom(
-                          padding: EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          backgroundColor: Colors.white,
-                          foregroundColor:
-                              Theme.of(context).colorScheme.primary,
-                          elevation: 0,
+                Obx(
+                  () => SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed:
+                          controller.isLoading.value
+                              ? null
+                              : controller.handleAuth,
+                      style: ElevatedButton.styleFrom(
+                        padding: EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
-                        child: controller.isLoading.value
-                            ? CircularProgressIndicator(
+                        backgroundColor: Colors.white,
+                        foregroundColor: Theme.of(context).colorScheme.primary,
+                        elevation: 0,
+                      ),
+                      child:
+                          controller.isLoading.value
+                              ? CircularProgressIndicator(
                                 valueColor: AlwaysStoppedAnimation<Color>(
                                   Theme.of(context).colorScheme.primary,
                                 ),
                               )
-                            : Text(
-                                controller.isLogin.value ? 'Sign In' : 'Sign Up',
+                              : Text(
+                                controller.isLogin.value
+                                    ? 'Sign In'
+                                    : 'Sign Up',
                                 style: TextStyle(
-                                    fontSize: 16, fontWeight: FontWeight.bold),
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                      ),
-                    )),
+                    ),
+                  ),
+                ),
                 SizedBox(height: 24),
                 // Toggle Auth Mode
                 Row(
@@ -198,7 +212,9 @@ class AuthView extends GetView<AuthController> {
                       child: Text(
                         controller.isLogin.value ? 'Sign Up' : 'Sign In',
                         style: TextStyle(
-                            color: Colors.white, fontWeight: FontWeight.bold),
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
                   ],
