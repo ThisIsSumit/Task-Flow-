@@ -90,13 +90,12 @@ lib/
 ```
 
 ## Screenshots
+![Image](https://github.com/user-attachments/assets/62487743-32f6-4198-92a8-dbc5f4dbdda4)
+![Image](https://github.com/user-attachments/assets/b84da426-f32b-4c0f-9ded-da437a73ad71)
+![Image](https://github.com/user-attachments/assets/0ad3bf5a-7c91-4731-b0ee-28877be81cce)
 
-<div style="display: flex; justify-content: space-between;">
-  <img src="https://via.placeholder.com/200x400" width="200" alt="Splash Screen">
-  <img src="https://via.placeholder.com/200x400" width="200" alt="Home Screen">
-  <img src="https://via.placeholder.com/200x400" width="200" alt="Analytics Screen">
-  <img src="https://via.placeholder.com/200x400" width="200" alt="Profile Screen">
-</div>
+
+
 
 ## Firebase Configuration
 
