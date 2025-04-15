@@ -10,6 +10,7 @@ class AuthService extends GetxService {
 
   Rx<User?> firebaseUser = Rx<User?>(null);
   Rx<UserModel?> userModel = Rx<UserModel?>(null);
+  String? _verificationId;
 
   @override
   void onInit() {
@@ -68,6 +69,59 @@ class AuthService extends GetxService {
       print('User document created successfully');
     } catch (e) {
       print('Sign up error: $e');
+      throw e;
+    }
+  }
+
+  Future<void> sendOtp(String phoneNumber) async {
+    try {
+      await _auth.verifyPhoneNumber(
+        phoneNumber: phoneNumber,
+        verificationCompleted: (PhoneAuthCredential credential) async {
+          await _auth.signInWithCredential(credential);
+        },
+        verificationFailed: (FirebaseAuthException e) {
+          throw e;
+        },
+        codeSent: (String verificationId, int? resendToken) {
+          _verificationId = verificationId;
+        },
+        codeAutoRetrievalTimeout: (String verificationId) {
+          _verificationId = verificationId;
+        },
+      );
+    } catch (e) {
+      throw e;
+    }
+  }
+
+  Future<void> verifyOtp(String otp) async {
+    try {
+      if (_verificationId == null) {
+        throw Exception('Verification ID not found');
+      }
+      final credential = PhoneAuthProvider.credential(
+        verificationId: _verificationId!,
+        smsCode: otp,
+      );
+      final userCredential = await _auth.signInWithCredential(credential);
+      final user = userCredential.user!;
+
+      // Create or update user in Firestore
+      final userData = await _firestoreService.getUserData(user.uid);
+      if (userData == null) {
+        final newUser = UserModel(
+          uid: user.uid,
+          email: user.email ?? '',
+          name: 'User ${user.uid.substring(0, 6)}',
+          phoneNumber: user.phoneNumber,
+        );
+        await _firestoreService.createUser(newUser);
+        userModel.value = newUser;
+      } else {
+        userModel.value = userData;
+      }
+    } catch (e) {
       throw e;
     }
   }

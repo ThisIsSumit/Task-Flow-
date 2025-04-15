@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:todo_app/routes/app_pages.dart';
 import '../data/services/auth_service.dart';
 
 class AuthController extends GetxController {
@@ -8,10 +9,15 @@ class AuthController extends GetxController {
   final nameController = TextEditingController();
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
+  final phoneController = TextEditingController();
+  final otpController = TextEditingController();
 
   final RxBool isLogin = true.obs;
   final RxBool isLoading = false.obs;
   final RxBool obscurePassword = true.obs;
+  final RxBool isPhoneAuth = false.obs;
+  final RxBool isOtpSent = false.obs;
+  final RxString verificationId = ''.obs;
 
   void toggleAuthMode() {
     isLogin.toggle();
@@ -22,13 +28,103 @@ class AuthController extends GetxController {
     obscurePassword.toggle();
   }
 
+  void toggleAuthMethod() {
+    isPhoneAuth.toggle();
+    clearControllers();
+  }
+
   void clearControllers() {
     nameController.clear();
     emailController.clear();
     passwordController.clear();
+    phoneController.clear();
+    otpController.clear();
+  }
+
+  Future<void> sendOtp() async {
+    if (phoneController.text.isEmpty) {
+      Get.snackbar(
+        'Error',
+        'Please enter your phone number',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    try {
+      isLoading.value = true;
+      final phoneNumber = phoneController.text.trim();
+      await _authService.sendOtp(phoneNumber);
+      isOtpSent.value = true;
+      Get.snackbar(
+        'Success',
+        'OTP sent successfully',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+      );
+    } catch (e) {
+      Get.snackbar(
+        'Error',
+        'Failed to send OTP. Please try again.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
+  Future<void> verifyOtp() async {
+    if (otpController.text.isEmpty) {
+      Get.snackbar(
+        'Error',
+        'Please enter the OTP',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    try {
+      isLoading.value = true;
+      final otp = otpController.text.trim();
+      await _authService.verifyOtp(otp);
+      Get.snackbar(
+        'Success',
+        'Phone number verified successfully',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+      );
+      Get.offAllNamed(Routes.HOME);
+    } catch (e) {
+      Get.snackbar(
+        'Error',
+        'Invalid OTP. Please try again.',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+    } finally {
+      isLoading.value = false;
+    }
   }
 
   Future<void> handleAuth() async {
+    if (isPhoneAuth.value) {
+      if (!isOtpSent.value) {
+        await sendOtp();
+      } else {
+        await verifyOtp();
+      }
+      return;
+    }
+
     final email = emailController.text.trim();
     final password = passwordController.text.trim();
 
@@ -98,6 +194,8 @@ class AuthController extends GetxController {
   //   nameController.dispose();
   //   emailController.dispose();
   //   passwordController.dispose();
+  //   phoneController.dispose();
+  //   otpController.dispose();
   //   super.onClose();
   // }
 }
