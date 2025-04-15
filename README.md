@@ -4,7 +4,7 @@
 
 TaskFlow is a feature-rich task management app built with Flutter using the GetX state management pattern. It helps users organize their tasks efficiently while providing insightful analytics on productivity.
 
-![TaskFlow App](https://via.placeholder.com/800x400)
+![Image](https://github.com/user-attachments/assets/62487743-32f6-4198-92a8-dbc5f4dbdda4)
 
 ## Features
 
@@ -90,8 +90,8 @@ lib/
 ```
 
 ## Screenshots
-![Image](https://github.com/user-attachments/assets/62487743-32f6-4198-92a8-dbc5f4dbdda4)
 ![Image](https://github.com/user-attachments/assets/1ae6c27f-88d4-4105-b72a-1615852b0c52)
+![Image](https://github.com/user-attachments/assets/774f7071-4337-4050-ad23-d813fc594e0c)
 ![Image](https://github.com/user-attachments/assets/b84da426-f32b-4c0f-9ded-da437a73ad71)
 ![Image](https://github.com/user-attachments/assets/0ad3bf5a-7c91-4731-b0ee-28877be81cce)
 
