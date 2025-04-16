@@ -18,6 +18,8 @@ class AuthController extends GetxController {
   final RxBool isPhoneAuth = false.obs;
   final RxBool isOtpSent = false.obs;
   final RxString verificationId = ''.obs;
+  final RxString countryCode = '+1'.obs; // Default country code
+  final RxString phoneNumber = ''.obs; // Just the number part
 
   void toggleAuthMode() {
     isLogin.toggle();
@@ -30,7 +32,16 @@ class AuthController extends GetxController {
 
   void toggleAuthMethod() {
     isPhoneAuth.toggle();
+    isOtpSent.value = false; // Reset OTP state when switching auth methods
     clearControllers();
+  }
+
+  void updateCountryCode(String code) {
+    countryCode.value = code;
+  }
+
+  void updatePhoneNumber(String number) {
+    phoneNumber.value = number;
   }
 
   void clearControllers() {
@@ -39,10 +50,11 @@ class AuthController extends GetxController {
     passwordController.clear();
     phoneController.clear();
     otpController.clear();
+    phoneNumber.value = '';
   }
 
   Future<void> sendOtp() async {
-    if (phoneController.text.isEmpty) {
+    if (phoneNumber.value.isEmpty) {
       Get.snackbar(
         'Error',
         'Please enter your phone number',
@@ -55,8 +67,8 @@ class AuthController extends GetxController {
 
     try {
       isLoading.value = true;
-      final phoneNumber = phoneController.text.trim();
-      await _authService.sendOtp(phoneNumber);
+      final fullPhoneNumber = '${countryCode.value}${phoneNumber.value}';
+      await _authService.sendOtp(fullPhoneNumber);
       isOtpSent.value = true;
       Get.snackbar(
         'Success',
@@ -162,6 +174,7 @@ class AuthController extends GetxController {
       }
 
       clearControllers();
+      Get.offAllNamed(Routes.HOME);
     } catch (e) {
       String errorMessage = 'An error occurred. Please try again.';
 
@@ -189,13 +202,14 @@ class AuthController extends GetxController {
     }
   }
 
-  // @override
-  // void onClose() {
-  //   nameController.dispose();
-  //   emailController.dispose();
-  //   passwordController.dispose();
-  //   phoneController.dispose();
-  //   otpController.dispose();
-  //   super.onClose();
-  // }
+  @override
+  void onClose() {
+    // Commented out to let GetX handle disposal
+    // nameController.dispose();
+    // emailController.dispose();
+    // passwordController.dispose();
+    // phoneController.dispose();
+    // otpController.dispose();
+    super.onClose();
+  }
 }

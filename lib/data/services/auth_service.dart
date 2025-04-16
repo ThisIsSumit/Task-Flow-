@@ -74,6 +74,7 @@ class AuthService extends GetxService {
   }
 
   Future<void> sendOtp(String phoneNumber) async {
+    print("this is phone no. : " + phoneNumber);
     try {
       await _auth.verifyPhoneNumber(
         phoneNumber: phoneNumber,
