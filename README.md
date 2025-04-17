@@ -91,9 +91,10 @@ lib/
 
 ## Screenshots
 ![Image](https://github.com/user-attachments/assets/1ae6c27f-88d4-4105-b72a-1615852b0c52)
-![Image](https://github.com/user-attachments/assets/774f7071-4337-4050-ad23-d813fc594e0c)
-![Image](https://github.com/user-attachments/assets/b84da426-f32b-4c0f-9ded-da437a73ad71)
+![Image](https://github.com/user-attachments/assets/774f7071-4337-4050-ad23-d813fc594e0c) ![Image](https://github.com/user-attachments/assets/b84da426-f32b-4c0f-9ded-da437a73ad71)
 ![Image](https://github.com/user-attachments/assets/0ad3bf5a-7c91-4731-b0ee-28877be81cce)
+![Image](https://github.com/user-attachments/assets/e0ebe420-513a-4284-9603-8dca307a19a6)
+![Image](https://github.com/user-attachments/assets/3595e4d4-5dfc-41c2-b8a9-d2b09653f0be)
 
 
 
