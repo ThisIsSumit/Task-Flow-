@@ -144,6 +144,7 @@ class AuthService extends GetxService {
   }
 
   String? getUserId() {
+    print('Getting user ID: ${_auth.currentUser?.uid}');
     return _auth.currentUser?.uid;
   }
 }

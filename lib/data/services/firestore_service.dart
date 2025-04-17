@@ -25,20 +25,19 @@ class FirestoreService extends GetxService {
   }
 
   Future<void> updateUserStats(String uid, Map<String, int> stats) async {
-    await _firestore.collection('users').doc(uid).update({
-      'taskStats': stats,
-    });
+    await _firestore.collection('users').doc(uid).update({'taskStats': stats});
   }
 
   // Task Methods
   Future<List<Task>> getTasks(String uid) async {
-    final snapshot = await _firestore
-        .collection('users')
-        .doc(uid)
-        .collection('tasks')
-        .orderBy('dueDate')
-        .get();
-    
+    final snapshot =
+        await _firestore
+            .collection('users')
+            .doc(uid)
+            .collection('tasks')
+            .orderBy('dueDate')
+            .get();
+
     return snapshot.docs.map((doc) => Task.fromMap(doc.data())).toList();
   }
 
@@ -69,54 +68,70 @@ class FirestoreService extends GetxService {
         .delete();
   }
 
-  Future<Map<String, dynamic>> getTaskAnalytics(String uid, {DateTime? startDate, DateTime? endDate}) async {
+  Future<Map<String, dynamic>> getTaskAnalytics(
+    String uid, {
+    DateTime? startDate,
+    DateTime? endDate,
+  }) async {
     // Get completed tasks for date range
-   Query <Map<String, dynamic>> query = _firestore
+    Query<Map<String, dynamic>> query = _firestore
         .collection('users')
         .doc(uid)
         .collection('tasks')
         .where('isCompleted', isEqualTo: true);
-    
+
     if (startDate != null) {
-      query = query.where('completedAt', isGreaterThanOrEqualTo: Timestamp.fromDate(startDate));
+      query = query.where(
+        'completedAt',
+        isGreaterThanOrEqualTo: Timestamp.fromDate(startDate),
+      );
     }
-    
+
     if (endDate != null) {
-      query = query.where('completedAt', isLessThanOrEqualTo: Timestamp.fromDate(endDate));
+      query = query.where(
+        'completedAt',
+        isLessThanOrEqualTo: Timestamp.fromDate(endDate),
+      );
     }
-    
+
     final completedSnapshot = await query.get();
-    final completedTasks = completedSnapshot.docs.map((doc) => Task.fromMap(doc.data())).toList();
-    
+    final completedTasks =
+        completedSnapshot.docs.map((doc) => Task.fromMap(doc.data())).toList();
+
     // Get all tasks
-    final allTasksSnapshot = await _firestore
-        .collection('users')
-        .doc(uid)
-        .collection('tasks')
-        .get();
-    
-    final allTasks = allTasksSnapshot.docs.map((doc) => Task.fromMap(doc.data())).toList();
-    
+    final allTasksSnapshot =
+        await _firestore.collection('users').doc(uid).collection('tasks').get();
+
+    final allTasks =
+        allTasksSnapshot.docs.map((doc) => Task.fromMap(doc.data())).toList();
+
     // Calculate stats
     final totalTasks = allTasks.length;
     final completedCount = completedTasks.length;
     final pendingCount = allTasks.where((task) => !task.isCompleted).length;
-    final overdueCount = allTasks.where((task) => 
-        !task.isCompleted && task.dueDate.isBefore(DateTime.now())).length;
-    
+    final overdueCount =
+        allTasks
+            .where(
+              (task) =>
+                  !task.isCompleted && task.dueDate.isBefore(DateTime.now()),
+            )
+            .length;
+
     // Group completed tasks by day
     Map<String, int> completionByDay = {};
     for (var task in completedTasks) {
-      final day = '${task.completedAt!.day}-${task.completedAt!.month}-${task.completedAt!.year}';
+      final day =
+          '${task.completedAt!.day}-${task.completedAt!.month}-${task.completedAt!.year}';
       completionByDay[day] = (completionByDay[day] ?? 0) + 1;
     }
-    
+
     // Group by category
     Map<String, int> tasksByCategory = {};
     for (var task in allTasks) {
-      tasksByCategory[task.category] = (tasksByCategory[task.category] ?? 0) + 1;
+      tasksByCategory[task.category] =
+          (tasksByCategory[task.category] ?? 0) + 1;
     }
-    
+
     return {
       'totalTasks': totalTasks,
       'completed': completedCount,

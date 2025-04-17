@@ -123,7 +123,7 @@ class AuthView extends GetView<AuthController> {
                                     decoration: InputDecoration(
                                       labelText: 'Phone Number',
                                       labelStyle: const TextStyle(
-                                        color: Color.fromARGB(255, 0, 0, 0),
+                                        color: Colors.grey,
                                       ),
                                       border: InputBorder.none,
                                       contentPadding:
