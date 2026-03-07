@@ -2,13 +2,27 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
 import 'package:todo_app/data/models/user_models.dart';
 import '../models/task_model.dart';
+import 'local_cache_service.dart';
 
 class FirestoreService extends GetxService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final LocalCacheService _cacheService = Get.find<LocalCacheService>();
+
+  @override
+  void onInit() {
+    super.onInit();
+    _firestore.settings = const Settings(
+      persistenceEnabled: true,
+      cacheSizeBytes: Settings.CACHE_SIZE_UNLIMITED,
+    );
+  }
 
   // User Methods
   Future<void> createUser(UserModel user) async {
-    await _firestore.collection('users').doc(user.uid).set(user.toMap());
+    await _firestore
+        .collection('users')
+        .doc(user.uid)
+        .set(user.toMap(), SetOptions(merge: true));
   }
 
   Future<UserModel> getUserData(String uid) async {
@@ -21,7 +35,10 @@ class FirestoreService extends GetxService {
   }
 
   Future<void> updateUserData(UserModel user) async {
-    await _firestore.collection('users').doc(user.uid).update(user.toMap());
+    await _firestore
+        .collection('users')
+        .doc(user.uid)
+        .set(user.toMap(), SetOptions(merge: true));
   }
 
   Future<void> updateUserStats(String uid, Map<String, int> stats) async {
@@ -30,24 +47,36 @@ class FirestoreService extends GetxService {
 
   // Task Methods
   Future<List<Task>> getTasks(String uid) async {
-    final snapshot =
-        await _firestore
-            .collection('users')
-            .doc(uid)
-            .collection('tasks')
-            .orderBy('dueDate')
-            .get();
+    try {
+      final snapshot =
+          await _firestore
+              .collection('users')
+              .doc(uid)
+              .collection('tasks')
+              .orderBy('dueDate')
+              .get();
 
-    return snapshot.docs.map((doc) => Task.fromMap(doc.data())).toList();
+      final tasks =
+          snapshot.docs
+              .map((doc) => Task.fromMap({...doc.data(), 'id': doc.id}))
+              .toList();
+      await _cacheService.saveTasks(uid, tasks);
+      return tasks;
+    } catch (_) {
+      return _cacheService.readTasks(uid);
+    }
   }
 
-  Future<void> addTask(String uid, Task task) async {
-    await _firestore
+  Future<Task> addTask(String uid, Task task) async {
+    final tasksRef = _firestore
         .collection('users')
         .doc(uid)
-        .collection('tasks')
-        .doc(task.id)
-        .set(task.toMap());
+        .collection('tasks');
+    final docRef = task.id.isEmpty ? tasksRef.doc() : tasksRef.doc(task.id);
+    final normalized = task.copyWith(id: docRef.id);
+
+    await docRef.set(normalized.toMap());
+    return normalized;
   }
 
   Future<void> updateTask(String uid, Task task) async {
@@ -57,6 +86,10 @@ class FirestoreService extends GetxService {
         .collection('tasks')
         .doc(task.id)
         .update(task.toMap());
+  }
+
+  Future<void> recoverSync() async {
+    await _firestore.enableNetwork();
   }
 
   Future<void> deleteTask(String uid, String taskId) async {

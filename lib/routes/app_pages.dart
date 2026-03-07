@@ -5,6 +5,8 @@ import '../bindings/auth_binding.dart';
 import '../modules/auth_view.dart';
 import '../bindings/home_binding.dart';
 import '../modules/home_view.dart';
+import '../bindings/calendar_binding.dart';
+import '../modules/calendar_view.dart';
 import '../bindings/profile_binding.dart';
 import '../modules/profile_view.dart';
 import '../bindings/splash_binding.dart';
@@ -21,15 +23,12 @@ class AppPages {
       page: () => SplashView(),
       binding: SplashBinding(),
     ),
+    GetPage(name: Routes.AUTH, page: () => AuthView(), binding: AuthBinding()),
+    GetPage(name: Routes.HOME, page: () => HomeView(), binding: HomeBinding()),
     GetPage(
-      name: Routes.AUTH,
-      page: () => AuthView(),
-      binding: AuthBinding(),
-    ),
-    GetPage(
-      name: Routes.HOME,
-      page: () => HomeView(),
-      binding: HomeBinding(),
+      name: Routes.CALENDAR,
+      page: () => CalendarView(),
+      binding: CalendarBinding(),
     ),
     GetPage(
       name: Routes.PROFILE,

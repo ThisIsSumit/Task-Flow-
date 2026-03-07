@@ -39,7 +39,7 @@ class AuthView extends GetView<AuthController> {
                             shape: BoxShape.circle,
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.1),
+                                color: Colors.black.withValues(alpha: 0.1),
                                 blurRadius: 10,
                                 offset: const Offset(0, 5),
                               ),
@@ -80,7 +80,7 @@ class AuthView extends GetView<AuthController> {
                         ? 'Sign in to continue'
                         : 'Get started with TaskFlow',
                     style: theme.textTheme.bodyLarge?.copyWith(
-                      color: Colors.white.withOpacity(0.8),
+                      color: Colors.white.withValues(alpha: 0.8),
                     ),
                   ),
                   const SizedBox(height: 32),
@@ -117,13 +117,13 @@ class AuthView extends GetView<AuthController> {
                                     disableLengthCheck: true,
                                     dropdownIcon: const Icon(
                                       Icons.arrow_drop_down,
-                                      color: Colors.white,
+                                      color: Colors.black54,
                                     ),
                                     style: const TextStyle(color: Colors.black),
                                     decoration: InputDecoration(
                                       labelText: 'Phone Number',
                                       labelStyle: const TextStyle(
-                                        color: Colors.grey,
+                                        color: Colors.black,
                                       ),
                                       border: InputBorder.none,
                                       contentPadding:
@@ -131,12 +131,12 @@ class AuthView extends GetView<AuthController> {
                                             vertical: 15,
                                           ),
                                     ),
-                                    initialCountryCode: 'US',
+                                    initialCountryCode: 'IN',
                                     onChanged: (phone) {
                                       controller.countryCode.value =
-                                          phone.countryCode ?? '+1';
+                                          phone.countryCode;
                                       controller.phoneNumber.value =
-                                          phone.number ?? '';
+                                          phone.number;
                                     },
                                   ),
                                 ),
@@ -149,27 +149,32 @@ class AuthView extends GetView<AuthController> {
                                                 controller.otpController,
                                             keyboardType: TextInputType.number,
                                             style: const TextStyle(
-                                              color: Colors.black,
+                                              color: Color.fromARGB(
+                                                255,
+                                                255,
+                                                255,
+                                                255,
+                                              ),
                                             ),
                                             decoration: InputDecoration(
                                               labelText: 'OTP',
                                               labelStyle: const TextStyle(
-                                                color: Colors.grey,
+                                                color: Colors.white70,
                                               ),
                                               prefixIcon: const Icon(
                                                 Icons.lock,
-                                                color: Colors.grey,
+                                                color: Colors.white70,
                                               ),
                                               enabledBorder:
                                                   const UnderlineInputBorder(
                                                     borderSide: BorderSide(
-                                                      color: Colors.grey,
+                                                      color: Colors.white70,
                                                     ),
                                                   ),
                                               focusedBorder:
                                                   const UnderlineInputBorder(
                                                     borderSide: BorderSide(
-                                                      color: Colors.grey,
+                                                      color: Colors.white70,
                                                     ),
                                                   ),
                                             ),
@@ -190,7 +195,7 @@ class AuthView extends GetView<AuthController> {
                                                 controller:
                                                     controller.nameController,
                                                 style: const TextStyle(
-                                                  color: Colors.black,
+                                                  color: Colors.white,
                                                 ),
                                                 decoration: InputDecoration(
                                                   labelText: 'Full Name',
@@ -224,7 +229,9 @@ class AuthView extends GetView<AuthController> {
                                 TextFormField(
                                   controller: controller.emailController,
                                   keyboardType: TextInputType.emailAddress,
-                                  style: const TextStyle(color: Colors.black),
+                                  style: const TextStyle(
+                                    color: Color.fromARGB(255, 255, 255, 255),
+                                  ),
                                   decoration: InputDecoration(
                                     labelText: 'Email',
                                     labelStyle: const TextStyle(
@@ -253,7 +260,9 @@ class AuthView extends GetView<AuthController> {
                                     controller: controller.passwordController,
                                     obscureText:
                                         controller.obscurePassword.value,
-                                    style: const TextStyle(color: Colors.black),
+                                    style: const TextStyle(
+                                      color: Color.fromARGB(255, 255, 255, 255),
+                                    ),
                                     decoration: InputDecoration(
                                       labelText: 'Password',
                                       labelStyle: const TextStyle(
@@ -344,7 +353,7 @@ class AuthView extends GetView<AuthController> {
                                       ? "Don't have an account?"
                                       : "Already have an account?",
                                   style: TextStyle(
-                                    color: Colors.white.withOpacity(0.8),
+                                    color: Colors.white.withValues(alpha: 0.8),
                                   ),
                                 ),
                                 TextButton(

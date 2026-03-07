@@ -5,7 +5,6 @@ import '../controllers/splash_controller.dart';
 class SplashView extends GetView<SplashController> {
   const SplashView({super.key});
 
-  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -33,7 +32,7 @@ class SplashView extends GetView<SplashController> {
                 shape: BoxShape.circle,
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
+                    color: Colors.black.withValues(alpha: 0.1),
                     blurRadius: 20,
                     offset: Offset(0, 10),
                   ),
@@ -59,7 +58,7 @@ class SplashView extends GetView<SplashController> {
             Text(
               'Organize your tasks efficiently',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                color: Colors.white.withOpacity(0.8),
+                color: Colors.white.withValues(alpha: 0.8),
               ),
             ),
             SizedBox(height: 60),

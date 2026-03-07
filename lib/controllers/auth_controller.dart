@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:get/get.dart';
 import 'package:todo_app/routes/app_pages.dart';
 import '../data/services/auth_service.dart';
@@ -78,9 +79,11 @@ class AuthController extends GetxController {
         colorText: Colors.white,
       );
     } catch (e) {
+      final errorMessage =
+          e is FirebaseAuthException ? (e.message ?? e.code) : e.toString();
       Get.snackbar(
         'Error',
-        'Failed to send OTP. Please try again.',
+        'Failed to send OTP: $errorMessage',
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.red,
         colorText: Colors.white,
@@ -115,9 +118,11 @@ class AuthController extends GetxController {
       );
       Get.offAllNamed(Routes.HOME);
     } catch (e) {
+      final errorMessage =
+          e is FirebaseAuthException ? (e.message ?? e.code) : e.toString();
       Get.snackbar(
         'Error',
-        'Invalid OTP. Please try again.',
+        'OTP verification failed: $errorMessage',
         snackPosition: SnackPosition.BOTTOM,
         backgroundColor: Colors.red,
         colorText: Colors.white,
@@ -177,6 +182,7 @@ class AuthController extends GetxController {
       Get.offAllNamed(Routes.HOME);
     } catch (e) {
       String errorMessage = 'An error occurred. Please try again.';
+      print(e.toString());
 
       if (e.toString().contains('user-not-found')) {
         errorMessage = 'No user found with this email.';

@@ -26,14 +26,13 @@ class AppTheme {
       primary: primaryColor,
       secondary: secondaryColor,
       tertiary: accentColor,
-      background: backgroundColor,
       surface: cardColor,
       onSurface: textColor,
     ),
-    cardTheme: CardTheme(
+    cardTheme: CardThemeData(
       color: cardColor,
       elevation: 4,
-      shadowColor: Colors.black.withOpacity(0.1),
+      shadowColor: Colors.black.withValues(alpha: 0.1),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
     ),
     appBarTheme: AppBarTheme(
@@ -47,12 +46,30 @@ class AppTheme {
       ),
     ),
     textTheme: TextTheme(
-      displayLarge: GoogleFonts.poppins(color: textColor, fontWeight: FontWeight.bold),
-      displayMedium: GoogleFonts.poppins(color: textColor, fontWeight: FontWeight.bold),
-      displaySmall: GoogleFonts.poppins(color: textColor, fontWeight: FontWeight.bold),
-      headlineMedium: GoogleFonts.poppins(color: textColor, fontWeight: FontWeight.w600),
-      headlineSmall: GoogleFonts.poppins(color: textColor, fontWeight: FontWeight.w600),
-      titleLarge: GoogleFonts.poppins(color: textColor, fontWeight: FontWeight.w600),
+      displayLarge: GoogleFonts.poppins(
+        color: textColor,
+        fontWeight: FontWeight.bold,
+      ),
+      displayMedium: GoogleFonts.poppins(
+        color: textColor,
+        fontWeight: FontWeight.bold,
+      ),
+      displaySmall: GoogleFonts.poppins(
+        color: textColor,
+        fontWeight: FontWeight.bold,
+      ),
+      headlineMedium: GoogleFonts.poppins(
+        color: textColor,
+        fontWeight: FontWeight.w600,
+      ),
+      headlineSmall: GoogleFonts.poppins(
+        color: textColor,
+        fontWeight: FontWeight.w600,
+      ),
+      titleLarge: GoogleFonts.poppins(
+        color: textColor,
+        fontWeight: FontWeight.w600,
+      ),
       bodyLarge: GoogleFonts.poppins(color: textColor),
       bodyMedium: GoogleFonts.poppins(color: textColor),
     ),
@@ -95,14 +112,13 @@ class AppTheme {
       primary: primaryColor,
       secondary: secondaryColor,
       tertiary: accentColor,
-      background: darkBackgroundColor,
       surface: darkCardColor,
       onSurface: darkTextColor,
     ),
-    cardTheme: CardTheme(
+    cardTheme: CardThemeData(
       color: darkCardColor,
       elevation: 4,
-      shadowColor: Colors.black.withOpacity(0.3),
+      shadowColor: Colors.black.withValues(alpha: 0.3),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
     ),
     appBarTheme: AppBarTheme(
@@ -116,12 +132,30 @@ class AppTheme {
       ),
     ),
     textTheme: TextTheme(
-      displayLarge: GoogleFonts.poppins(color: darkTextColor, fontWeight: FontWeight.bold),
-      displayMedium: GoogleFonts.poppins(color: darkTextColor, fontWeight: FontWeight.bold),
-      displaySmall: GoogleFonts.poppins(color: darkTextColor, fontWeight: FontWeight.bold),
-      headlineMedium: GoogleFonts.poppins(color: darkTextColor, fontWeight: FontWeight.w600),
-      headlineSmall: GoogleFonts.poppins(color: darkTextColor, fontWeight: FontWeight.w600),
-      titleLarge: GoogleFonts.poppins(color: darkTextColor, fontWeight: FontWeight.w600),
+      displayLarge: GoogleFonts.poppins(
+        color: darkTextColor,
+        fontWeight: FontWeight.bold,
+      ),
+      displayMedium: GoogleFonts.poppins(
+        color: darkTextColor,
+        fontWeight: FontWeight.bold,
+      ),
+      displaySmall: GoogleFonts.poppins(
+        color: darkTextColor,
+        fontWeight: FontWeight.bold,
+      ),
+      headlineMedium: GoogleFonts.poppins(
+        color: darkTextColor,
+        fontWeight: FontWeight.w600,
+      ),
+      headlineSmall: GoogleFonts.poppins(
+        color: darkTextColor,
+        fontWeight: FontWeight.w600,
+      ),
+      titleLarge: GoogleFonts.poppins(
+        color: darkTextColor,
+        fontWeight: FontWeight.w600,
+      ),
       bodyLarge: GoogleFonts.poppins(color: darkTextColor),
       bodyMedium: GoogleFonts.poppins(color: darkTextColor),
     ),

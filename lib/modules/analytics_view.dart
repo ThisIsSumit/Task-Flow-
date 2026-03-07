@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:get/get.dart';
-import 'package:intl/intl.dart';
 import '../controllers/analytics_controller.dart';
 
 class AnalyticsView extends GetView<AnalyticsController> {
+  const AnalyticsView({super.key});
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -19,12 +20,12 @@ class AnalyticsView extends GetView<AnalyticsController> {
         if (controller.isLoading.value) {
           return Center(child: CircularProgressIndicator());
         }
-        
+
         final data = controller.analyticsData;
         if (data.isEmpty) {
           return Center(child: Text('No analytics data available'));
         }
-        
+
         return SingleChildScrollView(
           padding: EdgeInsets.all(16),
           child: Column(
@@ -40,7 +41,7 @@ class AnalyticsView extends GetView<AnalyticsController> {
       }),
     );
   }
-  
+
   Widget _buildStatsCard(Map<String, dynamic> data) {
     return Card(
       child: Padding(
@@ -58,18 +59,17 @@ class AnalyticsView extends GetView<AnalyticsController> {
             ),
             SizedBox(height: 16),
             LinearProgressIndicator(
-              value: data['totalTasks'] > 0 
-                  ? (data['completed'] / data['totalTasks']) 
-                  : 0,
+              value:
+                  data['totalTasks'] > 0
+                      ? (data['completed'] / data['totalTasks'])
+                      : 0,
               backgroundColor: Colors.grey[200],
               color: Theme.of(Get.context!).colorScheme.primary,
               minHeight: 8,
             ),
             SizedBox(height: 8),
             Text(
-              '${data['totalTasks'] > 0 
-                  ? ((data['completed'] / data['totalTasks']) * 100).toStringAsFixed(1) 
-                  : 0}% completed',
+              '${data['totalTasks'] > 0 ? ((data['completed'] / data['totalTasks']) * 100).toStringAsFixed(1) : 0}% completed',
               style: TextStyle(fontWeight: FontWeight.bold),
             ),
           ],
@@ -77,14 +77,11 @@ class AnalyticsView extends GetView<AnalyticsController> {
       ),
     );
   }
-  
+
   Widget _buildStatItem(String label, int value) {
     return Column(
       children: [
-        Text(
-          label,
-          style: TextStyle(color: Colors.grey, fontSize: 12),
-        ),
+        Text(label, style: TextStyle(color: Colors.grey, fontSize: 12)),
         SizedBox(height: 4),
         Text(
           value.toString(),
@@ -93,12 +90,12 @@ class AnalyticsView extends GetView<AnalyticsController> {
       ],
     );
   }
-  
+
   Widget _buildCompletionChart(Map<String, int>? completionData) {
     if (completionData == null || completionData.isEmpty) {
       return SizedBox();
     }
-    
+
     final now = DateTime.now();
     final weekDays = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
     final chartData = List.generate(7, (index) {
@@ -106,7 +103,7 @@ class AnalyticsView extends GetView<AnalyticsController> {
       final dayKey = '${date.day}-${date.month}-${date.year}';
       return completionData[dayKey] ?? 0;
     });
-    
+
     return Card(
       child: Padding(
         padding: EdgeInsets.all(16),
@@ -123,7 +120,9 @@ class AnalyticsView extends GetView<AnalyticsController> {
               child: BarChart(
                 BarChartData(
                   alignment: BarChartAlignment.spaceAround,
-                  maxY: (chartData.reduce((a, b) => a > b ? a : b) + 2).toDouble(),
+                  maxY:
+                      (chartData.reduce((a, b) => a > b ? a : b) + 2)
+                          .toDouble(),
                   barTouchData: BarTouchData(enabled: false),
                   titlesData: FlTitlesData(
                     show: true,
@@ -154,8 +153,12 @@ class AnalyticsView extends GetView<AnalyticsController> {
                         reservedSize: 30,
                       ),
                     ),
-                    rightTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
-                    topTitles: AxisTitles(sideTitles: SideTitles(showTitles: false)),
+                    rightTitles: AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    topTitles: AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
                   ),
                   gridData: FlGridData(show: false),
                   borderData: FlBorderData(show: false),
@@ -180,12 +183,12 @@ class AnalyticsView extends GetView<AnalyticsController> {
       ),
     );
   }
-  
+
   Widget _buildCategoryChart(Map<String, int>? categoryData) {
     if (categoryData == null || categoryData.isEmpty) {
       return SizedBox();
     }
-    
+
     final entries = categoryData.entries.toList();
     final colors = [
       Theme.of(Get.context!).colorScheme.primary,
@@ -194,7 +197,7 @@ class AnalyticsView extends GetView<AnalyticsController> {
       Colors.orange,
       Colors.purple,
     ];
-    
+
     return Card(
       child: Padding(
         padding: EdgeInsets.all(16),

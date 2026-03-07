@@ -17,9 +17,8 @@ class UserModel {
     this.photoUrl,
     DateTime? createdAt,
     Map<String, int>? taskStats,
-  }) : this.createdAt = createdAt ?? DateTime.now(),
-       this.taskStats =
-           taskStats ?? {'completed': 0, 'pending': 0, 'overdue': 0};
+  }) : createdAt = createdAt ?? DateTime.now(),
+       taskStats = taskStats ?? {'completed': 0, 'pending': 0, 'overdue': 0};
 
   Map<String, dynamic> toMap() {
     return {

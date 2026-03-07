@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_slidable/flutter_slidable.dart';
 import 'package:get/get.dart';
-import 'package:intl/intl.dart';
 import 'package:todo_app/data/models/task_model.dart';
 import 'package:todo_app/routes/app_pages.dart';
 import '../controllers/home_controller.dart';
@@ -16,6 +15,10 @@ class HomeView extends GetView<HomeController> {
         title: const Text('My Tasks'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.calendar_month),
+            onPressed: () => Get.toNamed(Routes.CALENDAR),
+          ),
+          IconButton(
             icon: const Icon(Icons.analytics),
             onPressed: () => Get.toNamed(Routes.ANALYTICS),
           ),
@@ -26,63 +29,143 @@ class HomeView extends GetView<HomeController> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          controller.resetTaskForm();
+          _showTaskForm(context);
+        },
         child: const Icon(Icons.add),
-        onPressed: () => _showAddTaskDialog(context),
       ),
       body: Column(
-        children: [_buildFilterControls(), Expanded(child: _buildTaskList())],
+        children: [_buildTopControls(), Expanded(child: _buildTaskList())],
       ),
     );
   }
 
-  Widget _buildFilterControls() {
+  Widget _buildTopControls() {
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(12),
       child: Column(
         children: [
-          Obx(() {
-            // First access all observable values
-            final selectedCategory = controller.selectedCategory.value;
-            final categories = controller.categories;
-            final showCompleted = controller.showCompleted.value;
-
-            return Row(
+          TextField(
+            onChanged: (value) {
+              controller.searchQuery.value = value;
+              controller.filterTasks();
+            },
+            decoration: const InputDecoration(
+              prefixIcon: Icon(Icons.search),
+              hintText: 'Search title, notes, category...',
+            ),
+          ),
+          const SizedBox(height: 10),
+          Obx(
+            () => Row(
               children: [
                 Expanded(
                   child: DropdownButtonFormField<String>(
-                    value: selectedCategory,
+                    initialValue: controller.selectedCategory.value,
                     items:
-                        categories.map((category) {
-                          return DropdownMenuItem<String>(
-                            value: category,
-                            child: Text(category),
-                          );
-                        }).toList(),
+                        controller.categories
+                            .map(
+                              (item) => DropdownMenuItem(
+                                value: item,
+                                child: Text(item),
+                              ),
+                            )
+                            .toList(),
                     onChanged: (value) {
-                      if (value != null) {
-                        controller.selectedCategory.value = value;
-                        controller.filterTasks();
+                      if (value == null) {
+                        return;
                       }
+                      controller.selectedCategory.value = value;
+                      controller.filterTasks();
                     },
-                    decoration: const InputDecoration(
-                      labelText: 'Category',
-                      border: OutlineInputBorder(),
-                      isDense: true,
-                    ),
+                    decoration: const InputDecoration(labelText: 'Category'),
                   ),
                 ),
-                const SizedBox(width: 16),
-                Switch(
-                  value: showCompleted,
-                  onChanged: (value) {
-                    controller.showCompleted.value = value;
-                    controller.filterTasks();
-                  },
+                const SizedBox(width: 8),
+                Expanded(
+                  child: DropdownButtonFormField<TaskSortOption>(
+                    initialValue: controller.sortOption.value,
+                    items: const [
+                      DropdownMenuItem(
+                        value: TaskSortOption.dueDate,
+                        child: Text('Due Date'),
+                      ),
+                      DropdownMenuItem(
+                        value: TaskSortOption.priority,
+                        child: Text('Priority'),
+                      ),
+                      DropdownMenuItem(
+                        value: TaskSortOption.recent,
+                        child: Text('Recent'),
+                      ),
+                    ],
+                    onChanged: (value) {
+                      if (value == null) {
+                        return;
+                      }
+                      controller.sortOption.value = value;
+                      controller.filterTasks();
+                    },
+                    decoration: const InputDecoration(labelText: 'Sort By'),
+                  ),
                 ),
-                const Text('Completed'),
               ],
-            );
-          }),
+            ),
+          ),
+          const SizedBox(height: 10),
+          Obx(
+            () => Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    ChoiceChip(
+                      label: const Text('All'),
+                      selected: controller.quickFilter.value == QuickFilter.all,
+                      onSelected: (_) {
+                        controller.quickFilter.value = QuickFilter.all;
+                        controller.filterTasks();
+                      },
+                    ),
+                    ChoiceChip(
+                      label: const Text('Today'),
+                      selected:
+                          controller.quickFilter.value == QuickFilter.today,
+                      onSelected: (_) {
+                        controller.quickFilter.value = QuickFilter.today;
+                        controller.filterTasks();
+                      },
+                    ),
+                    ChoiceChip(
+                      label: const Text('This Week'),
+                      selected:
+                          controller.quickFilter.value == QuickFilter.thisWeek,
+                      onSelected: (_) {
+                        controller.quickFilter.value = QuickFilter.thisWeek;
+                        controller.filterTasks();
+                      },
+                    ),
+                  ],
+                ),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    const Text('Completed'),
+                    Switch(
+                      value: controller.showCompleted.value,
+                      onChanged: (value) {
+                        controller.showCompleted.value = value;
+                        controller.filterTasks();
+                      },
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );
@@ -90,348 +173,115 @@ class HomeView extends GetView<HomeController> {
 
   Widget _buildTaskList() {
     return Obx(() {
-      // Access observable variables FIRST in the builder
-      final isLoading = controller.isLoading.value;
-      final filteredTasks = controller.filteredTasks;
-
-      if (isLoading) {
+      if (controller.isLoading.value) {
         return const Center(child: CircularProgressIndicator());
       }
 
-      if (filteredTasks.isEmpty) {
-        return Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.assignment, size: 64, color: Colors.grey[400]),
-              const SizedBox(height: 16),
-              const Text(
-                'No tasks found',
-                style: TextStyle(fontSize: 18, color: Colors.grey),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Tap the + button to add a new task',
-                style: TextStyle(color: Colors.grey),
-              ),
-            ],
-          ),
-        );
+      if (controller.filteredTasks.isEmpty) {
+        return const Center(child: Text('No tasks found'));
       }
 
       return ListView.builder(
         padding: const EdgeInsets.only(bottom: 80),
-        itemCount: filteredTasks.length,
+        itemCount: controller.filteredTasks.length,
         itemBuilder: (context, index) {
-          final task = filteredTasks[index];
-          return _buildTaskItem(task, context, index);
+          final task = controller.filteredTasks[index];
+          return _buildTaskItem(task, context);
         },
       );
     });
   }
 
-  Widget _buildTaskItem(Task task, BuildContext context, int index) {
+  Widget _buildTaskItem(Task task, BuildContext context) {
     final isOverdue =
         !task.isCompleted && task.dueDate.isBefore(DateTime.now());
+    final completedSubtasks = task.subtasks.where((item) => item.isDone).length;
 
     return Padding(
-      key: ValueKey(task.id),
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: Slidable(
-        key: Key(task.id),
-        startActionPane: ActionPane(
+        key: ValueKey(task.id),
+        endActionPane: ActionPane(
           motion: const DrawerMotion(),
           children: [
             SlidableAction(
-              onPressed: (_) => controller.toggleTaskStatus(task),
-              backgroundColor: task.isCompleted ? Colors.orange : Colors.green,
-              foregroundColor: Colors.white,
-              icon: task.isCompleted ? Icons.refresh : Icons.check,
-              label: task.isCompleted ? 'Pending' : 'Complete',
-            ),
-          ],
-        ),
-        endActionPane: ActionPane(
-          motion: const ScrollMotion(),
-          children: [
-            SlidableAction(
-              onPressed: (_) => _showEditTaskDialog(task, context),
+              onPressed: (_) {
+                controller.prepareTaskForm(task);
+                _showTaskForm(context, existingTask: task);
+              },
               backgroundColor: Colors.blue,
-              foregroundColor: Colors.white,
               icon: Icons.edit,
               label: 'Edit',
             ),
             SlidableAction(
-              onPressed: (_) => _confirmDeleteTask(task),
+              onPressed: (_) => controller.deleteTask(task.id),
               backgroundColor: Colors.red,
-              foregroundColor: Colors.white,
               icon: Icons.delete,
               label: 'Delete',
             ),
           ],
         ),
-        child: ConstrainedBox(
-          constraints: BoxConstraints(
-            minHeight: 80,
-            maxWidth: MediaQuery.of(context).size.width - 32,
-          ),
-          child: Card(
-            elevation: 2,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
+        child: Card(
+          child: ListTile(
+            onTap: () => _showTaskDetails(task, context),
+            leading: IconButton(
+              icon: Icon(
+                task.isCompleted
+                    ? Icons.check_circle
+                    : Icons.radio_button_unchecked,
+                color: task.isCompleted ? Colors.green : Colors.grey,
+              ),
+              onPressed: () => controller.toggleTaskStatus(task),
             ),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(12),
-              onTap: () => _showTaskDetails(task, context),
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+            title: Text(
+              task.title,
+              style: TextStyle(
+                decoration:
+                    task.isCompleted ? TextDecoration.lineThrough : null,
+              ),
+            ),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${task.category} • ${controller.formatDate(task.dueDate)}',
+                  style: TextStyle(color: isOverdue ? Colors.red : null),
+                ),
+                const SizedBox(height: 4),
+                Row(
                   children: [
-                    Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            task.title,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              decoration:
-                                  task.isCompleted
-                                      ? TextDecoration.lineThrough
-                                      : null,
-                            ),
-                          ),
-                        ),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
-                          decoration: BoxDecoration(
-                            color: controller.getPriorityColor(task.priority),
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          child: Text(
-                            controller.getPriorityText(task.priority),
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    if (task.description.isNotEmpty) ...[
-                      Text(
-                        task.description,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: Colors.grey[600],
-                          decoration:
-                              task.isCompleted
-                                  ? TextDecoration.lineThrough
-                                  : null,
-                        ),
+                    if (task.recurrence != RecurrenceType.none)
+                      const Padding(
+                        padding: EdgeInsets.only(right: 8),
+                        child: Icon(Icons.repeat, size: 16),
                       ),
-                      const SizedBox(height: 8),
-                    ],
-                    Row(
-                      children: [
-                        Flexible(
-                          child: Text(
-                            '${task.category} • ${controller.formatDate(task.dueDate)}',
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: isOverdue ? Colors.red : Colors.grey[600],
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                        const Spacer(),
-                        IconButton(
-                          icon: Icon(
-                            task.isCompleted
-                                ? Icons.check_circle
-                                : Icons.radio_button_unchecked,
-                            color:
-                                task.isCompleted ? Colors.green : Colors.grey,
-                          ),
-                          onPressed: () => controller.toggleTaskStatus(task),
-                        ),
-                      ],
-                    ),
+                    if (task.reminderEnabled)
+                      const Padding(
+                        padding: EdgeInsets.only(right: 8),
+                        child: Icon(Icons.notifications_active, size: 16),
+                      ),
+                    if (task.subtasks.isNotEmpty)
+                      Text(
+                        'Checklist: $completedSubtasks/${task.subtasks.length}',
+                      ),
                   ],
                 ),
+              ],
+            ),
+            trailing: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: controller.getPriorityColor(task.priority),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                controller.getPriorityText(task.priority),
+                style: const TextStyle(color: Colors.white, fontSize: 12),
               ),
             ),
           ),
         ),
       ),
-    );
-  }
-
-  void _showAddTaskDialog(BuildContext context) {
-    // Reset controllers
-    controller.taskTitleController.clear();
-    controller.taskDescController.clear();
-    controller.taskCategoryController.clear();
-    controller.selectedDate = DateTime.now().add(const Duration(days: 1));
-    controller.selectedPriority = 2;
-
-    Get.bottomSheet(
-      Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Theme.of(context).scaffoldBackgroundColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Add New Task',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: controller.taskTitleController,
-                decoration: const InputDecoration(
-                  labelText: 'Title*',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: controller.taskDescController,
-                maxLines: 3,
-                decoration: const InputDecoration(
-                  labelText: 'Description',
-                  border: OutlineInputBorder(),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: controller.taskCategoryController,
-                decoration: const InputDecoration(
-                  labelText: 'Category',
-                  border: OutlineInputBorder(),
-                  hintText: 'e.g., Work, Personal, Shopping',
-                ),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  Expanded(
-                    child: InkWell(
-                      onTap: () async {
-                        final selected = await showDatePicker(
-                          context: context,
-                          initialDate:
-                              controller.selectedDate ??
-                              DateTime.now().add(const Duration(days: 1)),
-                          firstDate: DateTime.now(),
-                          lastDate: DateTime.now().add(
-                            const Duration(days: 365),
-                          ),
-                        );
-                        if (selected != null) {
-                          controller.selectedDate = selected;
-                          // Force UI update by calling this:
-                          controller.update();
-                        }
-                      },
-                      child: InputDecorator(
-                        decoration: const InputDecoration(
-                          labelText: 'Due Date',
-                          border: OutlineInputBorder(),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.calendar_today, size: 20),
-                            const SizedBox(width: 8),
-                            // Instead of Obx, use GetBuilder
-                            GetBuilder<HomeController>(
-                              builder:
-                                  (ctrl) => Text(
-                                    ctrl.selectedDate != null
-                                        ? ctrl.formatDate(ctrl.selectedDate!)
-                                        : 'Select a date',
-                                  ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: GetBuilder<HomeController>(
-                      builder:
-                          (ctrl) => DropdownButtonFormField<int>(
-                            value: ctrl.selectedPriority,
-                            items: [
-                              const DropdownMenuItem(
-                                value: 1,
-                                child: Text('High Priority'),
-                              ),
-                              const DropdownMenuItem(
-                                value: 2,
-                                child: Text('Medium Priority'),
-                              ),
-                              const DropdownMenuItem(
-                                value: 3,
-                                child: Text('Low Priority'),
-                              ),
-                            ],
-                            onChanged: (value) {
-                              if (value != null) {
-                                ctrl.selectedPriority = value;
-                                ctrl.update();
-                              }
-                            },
-                            decoration: const InputDecoration(
-                              labelText: 'Priority',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  style: ElevatedButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(vertical: 15),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                  ),
-                  onPressed: controller.addTask,
-                  child: Obx(
-                    () =>
-                        controller.isLoading.value
-                            ? const CircularProgressIndicator(
-                              color: Colors.white,
-                            )
-                            : const Text(
-                              'Add Task',
-                              style: TextStyle(fontSize: 16),
-                            ),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-      isScrollControlled: true,
     );
   }
 
@@ -441,343 +291,92 @@ class HomeView extends GetView<HomeController> {
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: Theme.of(context).scaffoldBackgroundColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Center(
-              child: Container(
-                width: 60,
-                height: 4,
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: Colors.grey[300],
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              ),
-            ),
-            Text(
-              task.title,
-              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
-            if (task.description.isNotEmpty) ...[
-              Text(task.description, style: const TextStyle(fontSize: 16)),
-              const SizedBox(height: 20),
-            ],
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Column(
-                children: [
-                  Row(
-                    children: [
-                      Icon(Icons.category, size: 20, color: Colors.grey[700]),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Category: ${task.category}',
-                        style: TextStyle(color: Colors.grey[700]),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.calendar_today,
-                        size: 20,
-                        color: Colors.grey[700],
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Due: ${controller.formatDate(task.dueDate)}',
-                        style: TextStyle(color: Colors.grey[700]),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.priority_high,
-                        size: 20,
-                        color: Colors.grey[700],
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Priority: ${controller.getPriorityText(task.priority)}',
-                        style: TextStyle(color: Colors.grey[700]),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-                  Row(
-                    children: [
-                      Icon(
-                        Icons.check_circle,
-                        size: 20,
-                        color:
-                            task.isCompleted ? Colors.green : Colors.grey[700],
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Status: ${task.isCompleted ? 'Completed' : 'Pending'}',
-                        style: TextStyle(
-                          color:
-                              task.isCompleted
-                                  ? Colors.green
-                                  : Colors.grey[700],
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                  if (task.completedAt != null) ...[
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Icon(Icons.done_all, size: 20, color: Colors.green),
-                        const SizedBox(width: 8),
-                        Text(
-                          'Completed on: ${controller.formatDate(task.completedAt!)}',
-                          style: TextStyle(color: Colors.grey[700]),
-                        ),
-                      ],
-                    ),
-                  ],
-                ],
-              ),
-            ),
-            const SizedBox(height: 24),
-            Row(
-              children: [
-                Expanded(
-                  child: ElevatedButton.icon(
-                    icon: Icon(
-                      task.isCompleted ? Icons.refresh : Icons.check_circle,
-                      color: Colors.white,
-                    ),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor:
-                          task.isCompleted ? Colors.orange : Colors.green,
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                    onPressed: () {
-                      Get.back();
-                      controller.toggleTaskStatus(task);
-                    },
-                    label: Text(
-                      task.isCompleted
-                          ? 'Mark as Pending'
-                          : 'Mark as Completed',
-                      style: const TextStyle(color: Colors.white),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.edit),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                    ),
-                    onPressed: () {
-                      Get.back();
-                      _showEditTaskDialog(task, context);
-                    },
-                    label: const Text('Edit Task'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.delete, color: Colors.red),
-                    style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      foregroundColor: Colors.red,
-                    ),
-                    onPressed: () {
-                      Get.back();
-                      _confirmDeleteTask(task);
-                    },
-                    label: const Text('Delete'),
-                  ),
-                ),
-              ],
-            ),
-          ],
-        ),
-      ),
-      isScrollControlled: true,
-    );
-  }
-
-  void _showEditTaskDialog(Task task, BuildContext context) {
-    // Set the current task values in the controllers
-    controller.taskTitleController.text = task.title;
-    controller.taskDescController.text = task.description;
-    controller.taskCategoryController.text = task.category;
-    controller.selectedDate = task.dueDate;
-    controller.selectedPriority = task.priority;
-
-    Get.bottomSheet(
-      Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Theme.of(context).scaffoldBackgroundColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(16)),
         ),
         child: SingleChildScrollView(
           child: Column(
-            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Edit Task',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: controller.taskTitleController,
-                decoration: const InputDecoration(
-                  labelText: 'Title*',
-                  border: OutlineInputBorder(),
+              Text(
+                task.title,
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: controller.taskDescController,
-                maxLines: 3,
-                decoration: const InputDecoration(
-                  labelText: 'Description',
-                  border: OutlineInputBorder(),
+              const SizedBox(height: 8),
+              if (task.description.isNotEmpty) Text(task.description),
+              const SizedBox(height: 10),
+              Text('Due: ${controller.formatDate(task.dueDate)}'),
+              Text('Priority: ${controller.getPriorityText(task.priority)}'),
+              Text('Recurrence: ${task.recurrence.name}'),
+              if (task.notes.isNotEmpty) ...[
+                const SizedBox(height: 10),
+                Text('Notes: ${task.notes}'),
+              ],
+              if (task.subtasks.isNotEmpty) ...[
+                const SizedBox(height: 14),
+                const Text(
+                  'Checklist',
+                  style: TextStyle(fontWeight: FontWeight.bold),
                 ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: controller.taskCategoryController,
-                decoration: const InputDecoration(
-                  labelText: 'Category',
-                  border: OutlineInputBorder(),
+                ...task.subtasks.map(
+                  (item) => CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    value: item.isDone,
+                    title: Text(item.title),
+                    onChanged: (_) => controller.toggleSubtask(task, item),
+                  ),
                 ),
-              ),
+              ],
+              if (task.attachments.isNotEmpty) ...[
+                const SizedBox(height: 14),
+                const Text(
+                  'Attachments',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                ...task.attachments.map(
+                  (item) => ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    leading: Icon(
+                      item.type == AttachmentType.image
+                          ? Icons.image
+                          : item.type == AttachmentType.file
+                          ? Icons.insert_drive_file
+                          : Icons.link,
+                    ),
+                    title: Text(item.label),
+                    subtitle: Text(
+                      item.url,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ),
+              ],
               const SizedBox(height: 16),
               Row(
                 children: [
                   Expanded(
-                    child: InkWell(
-                      onTap: () async {
-                        final selected = await showDatePicker(
-                          context: context,
-                          initialDate:
-                              controller.selectedDate ??
-                              DateTime.now().add(const Duration(days: 1)),
-                          firstDate: DateTime.now(),
-                          lastDate: DateTime.now().add(
-                            const Duration(days: 365),
-                          ),
-                        );
-                        if (selected != null) {
-                          controller.selectedDate = selected;
-                          // Force UI update by calling this:
-                          controller.update();
-                        }
+                    child: OutlinedButton(
+                      onPressed: () {
+                        Get.back();
+                        controller.prepareTaskForm(task);
+                        _showTaskForm(context, existingTask: task);
                       },
-                      child: InputDecorator(
-                        decoration: const InputDecoration(
-                          labelText: 'Due Date',
-                          border: OutlineInputBorder(),
-                        ),
-                        child: Row(
-                          children: [
-                            const Icon(Icons.calendar_today, size: 20),
-                            const SizedBox(width: 8),
-                            // Instead of Obx, use GetBuilder
-                            GetBuilder<HomeController>(
-                              builder:
-                                  (ctrl) => Text(
-                                    ctrl.selectedDate != null
-                                        ? ctrl.formatDate(ctrl.selectedDate!)
-                                        : 'Select a date',
-                                  ),
-                            ),
-                          ],
-                        ),
-                      ),
+                      child: const Text('Edit'),
                     ),
                   ),
-                  const SizedBox(width: 16),
-                  Expanded(
-                    child: GetBuilder<HomeController>(
-                      builder:
-                          (ctrl) => DropdownButtonFormField<int>(
-                            value: ctrl.selectedPriority,
-                            items: [
-                              const DropdownMenuItem(
-                                value: 1,
-                                child: Text('High Priority'),
-                              ),
-                              const DropdownMenuItem(
-                                value: 2,
-                                child: Text('Medium Priority'),
-                              ),
-                              const DropdownMenuItem(
-                                value: 3,
-                                child: Text('Low Priority'),
-                              ),
-                            ],
-                            onChanged: (value) {
-                              if (value != null) {
-                                ctrl.selectedPriority = value;
-                                ctrl.update();
-                              }
-                            },
-                            decoration: const InputDecoration(
-                              labelText: 'Priority',
-                              border: OutlineInputBorder(),
-                            ),
-                          ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextButton(
-                      onPressed: () => Get.back(),
-                      child: const Text('Cancel'),
-                    ),
-                  ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 15),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      onPressed: () => controller.updateTask(task),
-                      child: Obx(
-                        () =>
-                            controller.isLoading.value
-                                ? const CircularProgressIndicator(
-                                  color: Colors.white,
-                                )
-                                : const Text(
-                                  'Update Task',
-                                  style: TextStyle(fontSize: 16),
-                                ),
+                      onPressed: () {
+                        Get.back();
+                        controller.toggleTaskStatus(task);
+                      },
+                      child: Text(
+                        task.isCompleted ? 'Mark Pending' : 'Mark Complete',
                       ),
                     ),
                   ),
@@ -791,92 +390,339 @@ class HomeView extends GetView<HomeController> {
     );
   }
 
-  Future<bool?> _showDeleteConfirmationDialog(
-    BuildContext context,
-    Task task,
-  ) async {
-    return await showDialog<bool>(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Delete Task'),
-          content: Text('Are you sure you want to delete "${task.title}"?'),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(false),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.red,
-                foregroundColor: Colors.white,
+  void _showTaskForm(BuildContext context, {Task? existingTask}) {
+    Get.bottomSheet(
+      GetBuilder<HomeController>(
+        builder: (ctrl) {
+          return Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Theme.of(context).scaffoldBackgroundColor,
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(16),
               ),
-              onPressed: () => Navigator.of(context).pop(true),
-              child: const Text('Delete'),
             ),
-          ],
-        );
-      },
-    );
-  }
-
-  void _confirmDeleteTask(Task task) async {
-    final confirmed = await _showDeleteConfirmationDialog(Get.context!, task);
-    if (confirmed == true) {
-      controller.deleteTask(task.id);
-    }
-  }
-
-  void _showQuickActionMenu(BuildContext context, Task task) {
-    final RenderBox overlay =
-        Overlay.of(context).context.findRenderObject() as RenderBox;
-
-    showMenu(
-      context: context,
-      position: RelativeRect.fromRect(
-        Rect.fromPoints(
-          overlay.localToGlobal(const Offset(0, 0)),
-          overlay.localToGlobal(overlay.size.bottomRight(Offset.zero)),
-        ),
-        Offset.zero & overlay.size,
+            child: SingleChildScrollView(
+              child: Column(
+                children: [
+                  Text(
+                    existingTask == null ? 'Add Task' : 'Edit Task',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: ctrl.taskTitleController,
+                    decoration: const InputDecoration(labelText: 'Title*'),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: ctrl.taskDescController,
+                    maxLines: 2,
+                    decoration: const InputDecoration(labelText: 'Description'),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: ctrl.taskCategoryController,
+                    decoration: const InputDecoration(labelText: 'Category'),
+                  ),
+                  const SizedBox(height: 10),
+                  TextField(
+                    controller: ctrl.taskNotesController,
+                    maxLines: 2,
+                    decoration: const InputDecoration(labelText: 'Notes'),
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<int>(
+                          initialValue: ctrl.selectedPriority,
+                          items: const [
+                            DropdownMenuItem(value: 1, child: Text('High')),
+                            DropdownMenuItem(value: 2, child: Text('Medium')),
+                            DropdownMenuItem(value: 3, child: Text('Low')),
+                          ],
+                          onChanged: (value) {
+                            if (value != null) {
+                              ctrl.selectedPriority = value;
+                              ctrl.update();
+                            }
+                          },
+                          decoration: const InputDecoration(
+                            labelText: 'Priority',
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: DropdownButtonFormField<RecurrenceType>(
+                          initialValue: ctrl.selectedRecurrence.value,
+                          items:
+                              RecurrenceType.values
+                                  .map(
+                                    (item) => DropdownMenuItem(
+                                      value: item,
+                                      child: Text(item.name),
+                                    ),
+                                  )
+                                  .toList(),
+                          onChanged: (value) {
+                            if (value != null) {
+                              ctrl.selectedRecurrence.value = value;
+                              ctrl.update();
+                            }
+                          },
+                          decoration: const InputDecoration(
+                            labelText: 'Recurring',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.calendar_today),
+                          label: Text(
+                            ctrl.selectedDate == null
+                                ? 'Pick Due Date'
+                                : ctrl.formatDate(ctrl.selectedDate!),
+                          ),
+                          onPressed: () async {
+                            final selected = await showDatePicker(
+                              context: context,
+                              initialDate: ctrl.selectedDate ?? DateTime.now(),
+                              firstDate: DateTime.now().subtract(
+                                const Duration(days: 365),
+                              ),
+                              lastDate: DateTime.now().add(
+                                const Duration(days: 3650),
+                              ),
+                            );
+                            if (selected != null) {
+                              ctrl.selectedDate = selected;
+                              ctrl.update();
+                            }
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: SwitchListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: const Text('Reminder'),
+                          value: ctrl.reminderEnabled.value,
+                          onChanged: (value) {
+                            ctrl.reminderEnabled.value = value;
+                            ctrl.update();
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                  if (ctrl.reminderEnabled.value)
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            icon: const Icon(Icons.notifications),
+                            label: Text(
+                              ctrl.selectedReminderDate == null
+                                  ? 'Pick Reminder Time'
+                                  : '${ctrl.formatDate(ctrl.selectedReminderDate!)} ${TimeOfDay.fromDateTime(ctrl.selectedReminderDate!).format(context)}',
+                            ),
+                            onPressed: () async {
+                              final date = await showDatePicker(
+                                context: context,
+                                initialDate:
+                                    ctrl.selectedReminderDate ?? DateTime.now(),
+                                firstDate: DateTime.now().subtract(
+                                  const Duration(days: 30),
+                                ),
+                                lastDate: DateTime.now().add(
+                                  const Duration(days: 3650),
+                                ),
+                              );
+                              if (date == null) {
+                                return;
+                              }
+                              if (!context.mounted) {
+                                return;
+                              }
+                              final time = await showTimePicker(
+                                context: context,
+                                initialTime: TimeOfDay.fromDateTime(
+                                  ctrl.selectedReminderDate ?? DateTime.now(),
+                                ),
+                              );
+                              if (time == null) {
+                                return;
+                              }
+                              ctrl.selectedReminderDate = DateTime(
+                                date.year,
+                                date.month,
+                                date.day,
+                                time.hour,
+                                time.minute,
+                              );
+                              ctrl.update();
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: ctrl.subtaskController,
+                          decoration: const InputDecoration(
+                            labelText: 'Add checklist item',
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        onPressed: ctrl.addDraftSubtask,
+                        icon: const Icon(Icons.add_circle),
+                      ),
+                    ],
+                  ),
+                  if (ctrl.draftSubtasks.isNotEmpty)
+                    Wrap(
+                      spacing: 8,
+                      children:
+                          ctrl.draftSubtasks
+                              .map(
+                                (item) => Chip(
+                                  label: Text(item.title),
+                                  onDeleted:
+                                      () => ctrl.removeDraftSubtask(item.id),
+                                ),
+                              )
+                              .toList(),
+                    ),
+                  const SizedBox(height: 10),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: ctrl.attachmentLabelController,
+                          decoration: const InputDecoration(
+                            labelText: 'Attachment label',
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: TextField(
+                          controller: ctrl.attachmentUrlController,
+                          decoration: const InputDecoration(
+                            labelText: 'Image/File/Link URL',
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: DropdownButtonFormField<AttachmentType>(
+                          initialValue: ctrl.selectedAttachmentType.value,
+                          items:
+                              AttachmentType.values
+                                  .map(
+                                    (item) => DropdownMenuItem(
+                                      value: item,
+                                      child: Text(item.name),
+                                    ),
+                                  )
+                                  .toList(),
+                          onChanged: (value) {
+                            if (value != null) {
+                              ctrl.selectedAttachmentType.value = value;
+                              ctrl.update();
+                            }
+                          },
+                          decoration: const InputDecoration(
+                            labelText: 'Attachment Type',
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      IconButton(
+                        onPressed: ctrl.addDraftAttachment,
+                        icon: const Icon(Icons.attach_file),
+                      ),
+                    ],
+                  ),
+                  if (ctrl.draftAttachments.isNotEmpty)
+                    Column(
+                      children:
+                          ctrl.draftAttachments
+                              .map(
+                                (item) => ListTile(
+                                  dense: true,
+                                  title: Text(item.label),
+                                  subtitle: Text(
+                                    item.url,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  trailing: IconButton(
+                                    icon: const Icon(Icons.close),
+                                    onPressed:
+                                        () =>
+                                            ctrl.removeDraftAttachment(item.id),
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                    ),
+                  const SizedBox(height: 16),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      onPressed:
+                          ctrl.isLoading.value
+                              ? null
+                              : () {
+                                if (existingTask == null) {
+                                  ctrl.addTask();
+                                } else {
+                                  ctrl.updateTask(existingTask);
+                                }
+                              },
+                      child:
+                          ctrl.isLoading.value
+                              ? const CircularProgressIndicator(
+                                color: Colors.white,
+                              )
+                              : Text(
+                                existingTask == null
+                                    ? 'Add Task'
+                                    : 'Update Task',
+                              ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
-      items: [
-        PopupMenuItem(
-          child: ListTile(
-            leading: Icon(
-              task.isCompleted ? Icons.refresh : Icons.check_circle,
-              color: task.isCompleted ? Colors.orange : Colors.green,
-            ),
-            title: Text(
-              task.isCompleted ? 'Mark as Pending' : 'Mark as Completed',
-            ),
-            contentPadding: EdgeInsets.zero,
-          ),
-          onTap: () => controller.toggleTaskStatus(task),
-        ),
-        const PopupMenuItem(
-          value: 'edit',
-          child: ListTile(
-            leading: Icon(Icons.edit, color: Colors.blue),
-            title: Text('Edit Task'),
-            contentPadding: EdgeInsets.zero,
-          ),
-        ),
-        const PopupMenuItem(
-          value: 'delete',
-          child: ListTile(
-            leading: Icon(Icons.delete, color: Colors.red),
-            title: Text('Delete Task'),
-            contentPadding: EdgeInsets.zero,
-          ),
-        ),
-      ],
-    ).then((value) {
-      if (value == 'edit') {
-        _showEditTaskDialog(task, context);
-      } else if (value == 'delete') {
-        _confirmDeleteTask(task);
-      }
-    });
+      isScrollControlled: true,
+    );
   }
 }
