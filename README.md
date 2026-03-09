@@ -47,7 +47,7 @@ TaskFlow is a feature-rich task management app built with Flutter using the GetX
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/taskflow.git
+   git clone https://github.com/ThisIsSumit/taskflow.git
    cd taskflow
    ```
 
