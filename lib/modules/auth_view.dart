@@ -91,21 +91,21 @@ class AuthView extends GetView<AuthController> {
                     ),
                   ),
                   const SizedBox(height: 32),
-                  // Toggle Auth Method
-                  Center(
-                    child: TextButton(
-                      onPressed: controller.toggleAuthMethod,
-                      child: Text(
-                        controller.isPhoneAuth.value
-                            ? 'Use Email & Password'
-                            : 'Use Phone Number',
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ),
+                  // // Toggle Auth Method
+                  // Center(
+                  //   child: TextButton(
+                  //     onPressed: controller.toggleAuthMethod,
+                  //     child: Text(
+                  //       controller.isPhoneAuth.value
+                  //           ? 'Use Email & Password'
+                  //           : 'Use Phone Number',
+                  //       style: const TextStyle(
+                  //         color: Colors.white,
+                  //         fontWeight: FontWeight.bold,
+                  //       ),
+                  //     ),
+                  //   ),
+                  // ),
                   const SizedBox(height: 16),
                   // Phone Auth Fields
                   Obx(
