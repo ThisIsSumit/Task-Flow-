@@ -88,6 +88,48 @@ class AuthService extends GetxService {
     }
   }
 
+  Future<void> signInWithGoogle() async {
+    final isDesktop =
+        !kIsWeb &&
+        (defaultTargetPlatform == TargetPlatform.windows ||
+            defaultTargetPlatform == TargetPlatform.linux ||
+            defaultTargetPlatform == TargetPlatform.macOS);
+
+    if (isDesktop) {
+      throw FirebaseAuthException(
+        code: 'unsupported-platform',
+        message: 'Google sign-in is supported on Android, iOS, and Web only.',
+      );
+    }
+
+    final provider = GoogleAuthProvider();
+    provider.addScope('email');
+
+    UserCredential credential;
+    if (kIsWeb) {
+      credential = await _auth.signInWithPopup(provider);
+    } else {
+      credential = await _auth.signInWithProvider(provider);
+    }
+
+    final user = credential.user;
+    if (user == null) {
+      throw FirebaseAuthException(
+        code: 'google-sign-in-failed',
+        message: 'Unable to complete Google sign-in.',
+      );
+    }
+
+    try {
+      final existing = await _firestoreService.getUserData(user.uid);
+      userModel.value = existing;
+    } catch (_) {
+      final bootstrappedUser = _buildUserModelFromFirebaseUser(user);
+      await _firestoreService.createUser(bootstrappedUser);
+      userModel.value = bootstrappedUser;
+    }
+  }
+
   Future<void> sendOtp(String phoneNumber) async {
     final isDesktop =
         !kIsWeb &&

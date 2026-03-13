@@ -394,6 +394,45 @@ class AuthView extends GetView<AuthController> {
                       ),
                     ),
                   ),
+                  Obx(
+                    () =>
+                        !controller.isPhoneAuth.value
+                            ? Padding(
+                              padding: const EdgeInsets.only(top: 12),
+                              child: SizedBox(
+                                width: double.infinity,
+                                child: OutlinedButton.icon(
+                                  onPressed:
+                                      controller.isLoading.value
+                                          ? null
+                                          : controller.signInWithGoogle,
+                                  style: OutlinedButton.styleFrom(
+                                    padding: const EdgeInsets.symmetric(
+                                      vertical: 14,
+                                    ),
+                                    side: const BorderSide(
+                                      color: Colors.white70,
+                                    ),
+                                    foregroundColor: Colors.white,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                  ),
+                                  icon: const Icon(
+                                    Icons.g_mobiledata,
+                                    size: 24,
+                                  ),
+                                  label: const Text(
+                                    'Continue with Google',
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            )
+                            : const SizedBox.shrink(),
+                  ),
                   const SizedBox(height: 24),
                   // Toggle Auth Mode
                   Obx(

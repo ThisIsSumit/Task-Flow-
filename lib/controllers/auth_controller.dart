@@ -277,6 +277,30 @@ class AuthController extends GetxController {
     dialogEmailController.dispose();
   }
 
+  Future<void> signInWithGoogle() async {
+    try {
+      isLoading.value = true;
+      await _authService.signInWithGoogle();
+      clearControllers();
+      Get.offAllNamed(Routes.HOME);
+    } catch (e) {
+      final errorMessage =
+          e is FirebaseAuthException
+              ? (e.message ?? e.code)
+              : 'Google sign-in failed. Please try again.';
+
+      Get.snackbar(
+        'Error',
+        errorMessage,
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+    } finally {
+      isLoading.value = false;
+    }
+  }
+
   @override
   void onClose() {
     // Commented out to let GetX handle disposal
