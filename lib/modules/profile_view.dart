@@ -152,50 +152,75 @@ class ProfileView extends GetView<ProfileController> {
                         ),
                       ),
                       const SizedBox(height: 12),
-                      TextFormField(
-                        controller: controller.nameController,
-                        enabled:
-                            controller.isEditMode.value &&
-                            !controller.isLoading.value,
-                        decoration: const InputDecoration(
-                          labelText: 'Name',
-                          prefixIcon: Icon(Icons.person_outline),
+                      if (controller.isEditMode.value) ...[
+                        TextFormField(
+                          controller: controller.nameController,
+                          enabled: !controller.isLoading.value,
+                          decoration: const InputDecoration(
+                            labelText: 'Name',
+                            prefixIcon: Icon(Icons.person_outline),
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        initialValue:
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          initialValue:
+                              Get.find<AuthService>().userModel.value?.email ??
+                              '',
+                          enabled: false,
+                          decoration: const InputDecoration(
+                            labelText: 'Email',
+                            prefixIcon: Icon(Icons.email_outlined),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextFormField(
+                          controller: controller.phoneController,
+                          enabled: !controller.isLoading.value,
+                          keyboardType: TextInputType.phone,
+                          decoration: const InputDecoration(
+                            labelText: 'Phone Number',
+                            prefixIcon: Icon(Icons.phone_outlined),
+                          ),
+                        ),
+                      ] else ...[
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: const Icon(Icons.person_outline),
+                          title: const Text('Name'),
+                          subtitle: Text(
+                            Get.find<AuthService>().userModel.value?.name ??
+                                '-',
+                          ),
+                        ),
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: const Icon(Icons.email_outlined),
+                          title: const Text('Email'),
+                          subtitle: Text(
                             Get.find<AuthService>().userModel.value?.email ??
-                            '',
-                        enabled: false,
-                        decoration: const InputDecoration(
-                          labelText: 'Email',
-                          prefixIcon: Icon(Icons.email_outlined),
+                                '-',
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: controller.phoneController,
-                        enabled:
-                            controller.isEditMode.value &&
-                            !controller.isLoading.value,
-                        keyboardType: TextInputType.phone,
-                        decoration: const InputDecoration(
-                          labelText: 'Phone Number',
-                          prefixIcon: Icon(Icons.phone_outlined),
+                        ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          leading: const Icon(Icons.phone_outlined),
+                          title: const Text('Phone Number'),
+                          subtitle: Text(
+                            (Get.find<AuthService>()
+                                        .userModel
+                                        .value
+                                        ?.phoneNumber
+                                        ?.trim()
+                                        .isNotEmpty ==
+                                    true)
+                                ? Get.find<AuthService>()
+                                    .userModel
+                                    .value!
+                                    .phoneNumber!
+                                : 'Not set',
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 12),
-                      TextFormField(
-                        controller: controller.photoUrlController,
-                        enabled:
-                            controller.isEditMode.value &&
-                            !controller.isLoading.value,
-                        decoration: const InputDecoration(
-                          labelText: 'Photo URL',
-                          prefixIcon: Icon(Icons.link),
-                        ),
-                      ),
+                      ],
                       if (controller.isEditMode.value) ...[
                         const SizedBox(height: 14),
                         SizedBox(

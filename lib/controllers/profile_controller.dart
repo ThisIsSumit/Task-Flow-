@@ -17,7 +17,6 @@ class ProfileController extends GetxController {
 
   final nameController = TextEditingController();
   final phoneController = TextEditingController();
-  final photoUrlController = TextEditingController();
 
   Rx<ThemeMode> get themeMode => _themeController.themeMode;
   bool get isDarkMode => _themeController.isDarkMode;
@@ -37,13 +36,11 @@ class ProfileController extends GetxController {
     if (user == null) {
       nameController.clear();
       phoneController.clear();
-      photoUrlController.clear();
       return;
     }
 
     nameController.text = user.name;
     phoneController.text = user.phoneNumber ?? '';
-    photoUrlController.text = user.photoUrl ?? '';
   }
 
   void startEditing() {
@@ -71,8 +68,6 @@ class ProfileController extends GetxController {
 
     final name = nameController.text.trim();
     final phone = phoneController.text.trim();
-    final photoUrl = photoUrlController.text.trim();
-
     if (name.isEmpty) {
       Get.snackbar(
         'Error',
@@ -89,7 +84,7 @@ class ProfileController extends GetxController {
       await _authService.updateProfile(
         name: name,
         phoneNumber: phone.isEmpty ? null : phone,
-        photoUrl: photoUrl.isEmpty ? null : photoUrl,
+        photoUrl: user.photoUrl,
       );
       isEditMode.value = false;
       Get.snackbar(
@@ -148,8 +143,6 @@ class ProfileController extends GetxController {
         phoneNumber: user.phoneNumber,
         photoUrl: uploadedUrl,
       );
-
-      photoUrlController.text = uploadedUrl;
       update();
 
       Get.snackbar(
@@ -197,7 +190,6 @@ class ProfileController extends GetxController {
   void onClose() {
     nameController.dispose();
     phoneController.dispose();
-    photoUrlController.dispose();
     super.onClose();
   }
 }
