@@ -327,6 +327,28 @@ class AuthView extends GetView<AuthController> {
                                     ),
                                   ),
                                 ),
+                                Obx(
+                                  () =>
+                                      controller.isLogin.value
+                                          ? Align(
+                                            alignment: Alignment.centerRight,
+                                            child: TextButton(
+                                              onPressed:
+                                                  controller.isLoading.value
+                                                      ? null
+                                                      : controller
+                                                          .forgotPassword,
+                                              child: const Text(
+                                                'Forgot Password?',
+                                                style: TextStyle(
+                                                  color: Colors.white,
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                              ),
+                                            ),
+                                          )
+                                          : const SizedBox.shrink(),
+                                ),
                               ],
                             ),
                   ),

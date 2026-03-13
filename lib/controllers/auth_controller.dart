@@ -208,6 +208,75 @@ class AuthController extends GetxController {
     }
   }
 
+  Future<void> forgotPassword() async {
+    final dialogEmailController = TextEditingController(
+      text: emailController.text.trim(),
+    );
+
+    await Get.dialog(
+      AlertDialog(
+        title: const Text('Forgot Password'),
+        content: TextField(
+          controller: dialogEmailController,
+          keyboardType: TextInputType.emailAddress,
+          decoration: const InputDecoration(
+            labelText: 'Enter Email',
+            prefixIcon: Icon(Icons.email_outlined),
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Get.back(), child: const Text('Cancel')),
+          ElevatedButton(
+            onPressed: () async {
+              final email = dialogEmailController.text.trim();
+              if (email.isEmpty) {
+                Get.snackbar(
+                  'Error',
+                  'Please enter your email',
+                  snackPosition: SnackPosition.BOTTOM,
+                  backgroundColor: Colors.red,
+                  colorText: Colors.white,
+                );
+                return;
+              }
+
+              try {
+                isLoading.value = true;
+                await _authService.sendPasswordResetEmail(email);
+                Get.back();
+                Get.snackbar(
+                  'Success',
+                  'Check your email for the password reset link.',
+                  snackPosition: SnackPosition.BOTTOM,
+                  backgroundColor: Colors.green,
+                  colorText: Colors.white,
+                );
+              } catch (e) {
+                final errorMessage =
+                    e is FirebaseAuthException
+                        ? (e.message ?? e.code)
+                        : 'Failed to send reset link';
+                Get.snackbar(
+                  'Error',
+                  errorMessage,
+                  snackPosition: SnackPosition.BOTTOM,
+                  backgroundColor: Colors.red,
+                  colorText: Colors.white,
+                );
+              } finally {
+                isLoading.value = false;
+              }
+            },
+            child: const Text('Send Reset Link'),
+          ),
+        ],
+      ),
+      barrierDismissible: true,
+    );
+
+    dialogEmailController.dispose();
+  }
+
   @override
   void onClose() {
     // Commented out to let GetX handle disposal

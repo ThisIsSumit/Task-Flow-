@@ -236,6 +236,14 @@ class AuthService extends GetxService {
     }
   }
 
+  Future<void> sendPasswordResetEmail(String email) async {
+    try {
+      await _auth.sendPasswordResetEmail(email: email);
+    } catch (_) {
+      rethrow;
+    }
+  }
+
   Future<void> updateProfile({
     required String name,
     String? phoneNumber,
