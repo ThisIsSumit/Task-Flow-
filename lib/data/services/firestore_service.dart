@@ -106,37 +106,31 @@ class FirestoreService extends GetxService {
     DateTime? startDate,
     DateTime? endDate,
   }) async {
-    // Get completed tasks for date range
-    Query<Map<String, dynamic>> query = _firestore
-        .collection('users')
-        .doc(uid)
-        .collection('tasks')
-        .where('isCompleted', isEqualTo: true);
-
-    if (startDate != null) {
-      query = query.where(
-        'completedAt',
-        isGreaterThanOrEqualTo: Timestamp.fromDate(startDate),
-      );
-    }
-
-    if (endDate != null) {
-      query = query.where(
-        'completedAt',
-        isLessThanOrEqualTo: Timestamp.fromDate(endDate),
-      );
-    }
-
-    final completedSnapshot = await query.get();
-    final completedTasks =
-        completedSnapshot.docs.map((doc) => Task.fromMap(doc.data())).toList();
-
-    // Get all tasks
+    // Fetch all tasks first and compute date-window analytics in memory.
+    // This avoids composite index requirements for completedAt range queries.
     final allTasksSnapshot =
         await _firestore.collection('users').doc(uid).collection('tasks').get();
 
     final allTasks =
-        allTasksSnapshot.docs.map((doc) => Task.fromMap(doc.data())).toList();
+        allTasksSnapshot.docs
+            .map((doc) => Task.fromMap({...doc.data(), 'id': doc.id}))
+            .toList();
+
+    final completedTasks =
+        allTasks.where((task) {
+          if (!task.isCompleted || task.completedAt == null) {
+            return false;
+          }
+
+          final completedAt = task.completedAt!;
+          if (startDate != null && completedAt.isBefore(startDate)) {
+            return false;
+          }
+          if (endDate != null && completedAt.isAfter(endDate)) {
+            return false;
+          }
+          return true;
+        }).toList();
 
     // Calculate stats
     final totalTasks = allTasks.length;

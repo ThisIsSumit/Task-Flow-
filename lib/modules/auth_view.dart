@@ -9,6 +9,13 @@ class AuthView extends GetView<AuthController> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final isDarkMode = theme.brightness == Brightness.dark;
+    final inputFillColor =
+        isDarkMode ? Colors.white.withValues(alpha: 0.12) : Colors.white;
+    final inputTextColor = isDarkMode ? Colors.white : Colors.black87;
+    final inputLabelColor = isDarkMode ? Colors.white70 : Colors.black54;
+    final inputIconColor = isDarkMode ? Colors.white70 : Colors.black54;
+    final inputBorderColor = isDarkMode ? Colors.white70 : Colors.black26;
 
     return Scaffold(
       body: Container(
@@ -108,23 +115,26 @@ class AuthView extends GetView<AuthController> {
                               children: [
                                 Container(
                                   decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(8),
+                                    color: inputFillColor,
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(color: inputBorderColor),
                                   ),
                                   child: IntlPhoneField(
                                     controller: controller.phoneController,
                                     keyboardType: TextInputType.phone,
                                     disableLengthCheck: true,
-                                    dropdownIcon: const Icon(
+                                    dropdownIcon: Icon(
                                       Icons.arrow_drop_down,
-                                      color: Colors.black54,
+                                      color: inputIconColor,
                                     ),
-                                    style: const TextStyle(color: Colors.black),
+                                    style: TextStyle(color: inputTextColor),
                                     decoration: InputDecoration(
                                       labelText: 'Phone Number',
-                                      labelStyle: const TextStyle(
-                                        color: Colors.black,
+                                      labelStyle: TextStyle(
+                                        color: inputLabelColor,
                                       ),
+                                      filled: true,
+                                      fillColor: Colors.transparent,
                                       border: InputBorder.none,
                                       contentPadding:
                                           const EdgeInsets.symmetric(
@@ -148,35 +158,36 @@ class AuthView extends GetView<AuthController> {
                                             controller:
                                                 controller.otpController,
                                             keyboardType: TextInputType.number,
-                                            style: const TextStyle(
-                                              color: Color.fromARGB(
-                                                255,
-                                                255,
-                                                255,
-                                                255,
-                                              ),
+                                            style: TextStyle(
+                                              color: inputTextColor,
                                             ),
                                             decoration: InputDecoration(
                                               labelText: 'OTP',
-                                              labelStyle: const TextStyle(
-                                                color: Colors.white70,
+                                              filled: true,
+                                              fillColor: inputFillColor,
+                                              labelStyle: TextStyle(
+                                                color: inputLabelColor,
                                               ),
-                                              prefixIcon: const Icon(
+                                              prefixIcon: Icon(
                                                 Icons.lock,
-                                                color: Colors.white70,
+                                                color: inputIconColor,
                                               ),
-                                              enabledBorder:
-                                                  const UnderlineInputBorder(
-                                                    borderSide: BorderSide(
-                                                      color: Colors.white70,
-                                                    ),
-                                                  ),
-                                              focusedBorder:
-                                                  const UnderlineInputBorder(
-                                                    borderSide: BorderSide(
-                                                      color: Colors.white70,
-                                                    ),
-                                                  ),
+                                              enabledBorder: OutlineInputBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                                borderSide: BorderSide(
+                                                  color: inputBorderColor,
+                                                ),
+                                              ),
+                                              focusedBorder: OutlineInputBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                                borderSide: BorderSide(
+                                                  color:
+                                                      theme.colorScheme.primary,
+                                                  width: 2,
+                                                ),
+                                              ),
                                             ),
                                           )
                                           : const SizedBox.shrink(),
@@ -194,28 +205,43 @@ class AuthView extends GetView<AuthController> {
                                               TextFormField(
                                                 controller:
                                                     controller.nameController,
-                                                style: const TextStyle(
-                                                  color: Colors.white,
+                                                style: TextStyle(
+                                                  color: inputTextColor,
                                                 ),
                                                 decoration: InputDecoration(
                                                   labelText: 'Full Name',
-                                                  labelStyle: const TextStyle(
-                                                    color: Colors.grey,
+                                                  filled: true,
+                                                  fillColor: inputFillColor,
+                                                  labelStyle: TextStyle(
+                                                    color: inputLabelColor,
                                                   ),
-                                                  prefixIcon: const Icon(
+                                                  prefixIcon: Icon(
                                                     Icons.person,
-                                                    color: Colors.grey,
+                                                    color: inputIconColor,
                                                   ),
                                                   enabledBorder:
-                                                      const UnderlineInputBorder(
+                                                      OutlineInputBorder(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              12,
+                                                            ),
                                                         borderSide: BorderSide(
-                                                          color: Colors.grey,
+                                                          color:
+                                                              inputBorderColor,
                                                         ),
                                                       ),
                                                   focusedBorder:
-                                                      const UnderlineInputBorder(
+                                                      OutlineInputBorder(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              12,
+                                                            ),
                                                         borderSide: BorderSide(
-                                                          color: Colors.grey,
+                                                          color:
+                                                              theme
+                                                                  .colorScheme
+                                                                  .primary,
+                                                          width: 2,
                                                         ),
                                                       ),
                                                 ),
@@ -229,26 +255,29 @@ class AuthView extends GetView<AuthController> {
                                 TextFormField(
                                   controller: controller.emailController,
                                   keyboardType: TextInputType.emailAddress,
-                                  style: const TextStyle(
-                                    color: Color.fromARGB(255, 255, 255, 255),
-                                  ),
+                                  style: TextStyle(color: inputTextColor),
                                   decoration: InputDecoration(
                                     labelText: 'Email',
-                                    labelStyle: const TextStyle(
-                                      color: Colors.grey,
+                                    filled: true,
+                                    fillColor: inputFillColor,
+                                    labelStyle: TextStyle(
+                                      color: inputLabelColor,
                                     ),
-                                    prefixIcon: const Icon(
+                                    prefixIcon: Icon(
                                       Icons.email,
-                                      color: Colors.grey,
+                                      color: inputIconColor,
                                     ),
-                                    enabledBorder: const UnderlineInputBorder(
+                                    enabledBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
                                       borderSide: BorderSide(
-                                        color: Colors.grey,
+                                        color: inputBorderColor,
                                       ),
                                     ),
-                                    focusedBorder: const UnderlineInputBorder(
+                                    focusedBorder: OutlineInputBorder(
+                                      borderRadius: BorderRadius.circular(12),
                                       borderSide: BorderSide(
-                                        color: Colors.grey,
+                                        color: theme.colorScheme.primary,
+                                        width: 2,
                                       ),
                                     ),
                                   ),
@@ -260,36 +289,39 @@ class AuthView extends GetView<AuthController> {
                                     controller: controller.passwordController,
                                     obscureText:
                                         controller.obscurePassword.value,
-                                    style: const TextStyle(
-                                      color: Color.fromARGB(255, 255, 255, 255),
-                                    ),
+                                    style: TextStyle(color: inputTextColor),
                                     decoration: InputDecoration(
                                       labelText: 'Password',
-                                      labelStyle: const TextStyle(
-                                        color: Colors.grey,
+                                      filled: true,
+                                      fillColor: inputFillColor,
+                                      labelStyle: TextStyle(
+                                        color: inputLabelColor,
                                       ),
-                                      prefixIcon: const Icon(
+                                      prefixIcon: Icon(
                                         Icons.lock,
-                                        color: Colors.grey,
+                                        color: inputIconColor,
                                       ),
                                       suffixIcon: IconButton(
                                         icon: Icon(
                                           controller.obscurePassword.value
                                               ? Icons.visibility_off
                                               : Icons.visibility,
-                                          color: Colors.grey,
+                                          color: inputIconColor,
                                         ),
                                         onPressed:
                                             controller.togglePasswordVisibility,
                                       ),
-                                      enabledBorder: const UnderlineInputBorder(
+                                      enabledBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
                                         borderSide: BorderSide(
-                                          color: Colors.grey,
+                                          color: inputBorderColor,
                                         ),
                                       ),
-                                      focusedBorder: const UnderlineInputBorder(
+                                      focusedBorder: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
                                         borderSide: BorderSide(
-                                          color: Colors.grey,
+                                          color: theme.colorScheme.primary,
+                                          width: 2,
                                         ),
                                       ),
                                     ),

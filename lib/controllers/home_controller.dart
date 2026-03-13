@@ -71,6 +71,7 @@ class HomeController extends GetxController {
       await _processRecurringTasks(userId);
       _refreshCategoryList();
       filterTasks();
+      await _syncUserStats(userId);
       await _notificationService.showOverdue(tasks);
     } catch (e) {
       Get.snackbar('Error', 'Failed to fetch tasks: $e');
@@ -87,6 +88,22 @@ class HomeController extends GetxController {
       }
     }
     categories.assignAll(uniqueCategories.toList());
+  }
+
+  Future<void> _syncUserStats(String userId) async {
+    final now = DateTime.now();
+    final completed = tasks.where((task) => task.isCompleted).length;
+    final pending = tasks.where((task) => !task.isCompleted).length;
+    final overdue =
+        tasks
+            .where((task) => !task.isCompleted && task.dueDate.isBefore(now))
+            .length;
+
+    await _firestoreService.updateUserStats(userId, {
+      'completed': completed,
+      'pending': pending,
+      'overdue': overdue,
+    });
   }
 
   void filterTasks() {
@@ -283,11 +300,16 @@ class HomeController extends GetxController {
         await _notificationService.scheduleReminder(saved);
       }
 
+      await _syncUserStats(userId);
+
       Get.back();
       resetTaskForm();
       Get.snackbar('Success', 'Task added successfully');
     } catch (e) {
-      Get.snackbar('Error', 'Failed to add task: $e');
+      Get.log(
+        'Error'
+        'Failed to add task: $e',
+      );
     } finally {
       isLoading.value = false;
     }
@@ -335,6 +357,7 @@ class HomeController extends GetxController {
 
       _refreshCategoryList();
       filterTasks();
+      await _syncUserStats(userId);
       Get.back();
       Get.snackbar('Success', 'Task updated successfully');
     } catch (e) {
@@ -363,6 +386,7 @@ class HomeController extends GetxController {
 
       _refreshCategoryList();
       filterTasks();
+      await _syncUserStats(userId);
       Get.snackbar('Success', 'Task deleted successfully');
     } catch (e) {
       Get.snackbar('Error', 'Failed to delete task: $e');
@@ -398,6 +422,7 @@ class HomeController extends GetxController {
       }
 
       filterTasks();
+      await _syncUserStats(userId);
     } catch (e) {
       Get.snackbar('Error', 'Failed to update task status: $e');
     } finally {
@@ -454,6 +479,7 @@ class HomeController extends GetxController {
       }
 
       filterTasks();
+      await _syncUserStats(userId);
       Get.snackbar('Success', 'Task rescheduled');
     } catch (e) {
       Get.snackbar('Error', 'Failed to reschedule task: $e');

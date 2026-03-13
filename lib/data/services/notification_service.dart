@@ -1,4 +1,5 @@
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
@@ -26,24 +27,50 @@ class NotificationService extends GetxService {
       return;
     }
 
-    await _plugin.zonedSchedule(
-      task.id.hashCode,
-      'Task Reminder',
-      task.title,
-      tz.TZDateTime.from(scheduledAt, tz.local),
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'taskflow_reminders',
-          'Task reminders',
-          channelDescription: 'Task due and reminder notifications',
-          importance: Importance.high,
-          priority: Priority.high,
-        ),
+    final reminderDetails = const NotificationDetails(
+      android: AndroidNotificationDetails(
+        'taskflow_reminders',
+        'Task reminders',
+        channelDescription: 'Task due and reminder notifications',
+        importance: Importance.high,
+        priority: Priority.high,
       ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
     );
+
+    try {
+      await _plugin.zonedSchedule(
+        task.id.hashCode,
+        'Task Reminder',
+        task.title,
+        tz.TZDateTime.from(scheduledAt, tz.local),
+        reminderDetails,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+      );
+    } on PlatformException catch (e) {
+      // Android 12+ can block exact alarms unless explicitly allowed.
+      if (e.code == 'exact_alarms_not_permitted') {
+        Get.log(
+          'Exact alarm not permitted for task ${task.id}, falling back to inexact scheduling.',
+        );
+        await _plugin.zonedSchedule(
+          task.id.hashCode,
+          'Task Reminder',
+          task.title,
+          tz.TZDateTime.from(scheduledAt, tz.local),
+          reminderDetails,
+          androidScheduleMode: AndroidScheduleMode.inexactAllowWhileIdle,
+          uiLocalNotificationDateInterpretation:
+              UILocalNotificationDateInterpretation.absoluteTime,
+        );
+        return;
+      }
+
+      Get.log('Failed to schedule reminder for task ${task.id}: $e');
+    } catch (e) {
+      Get.log('Failed to schedule reminder for task ${task.id}: $e');
+    }
   }
 
   Future<void> cancelReminder(Task task) async {
