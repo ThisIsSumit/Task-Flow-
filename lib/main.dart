@@ -1,5 +1,6 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:get/get.dart';
 import 'package:todo_app/controllers/theme_controller.dart';
 import 'package:todo_app/firebase_options.dart';
@@ -8,6 +9,11 @@ import 'theme/app_theme.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await dotenv.load(fileName: '.env');
+  } catch (_) {
+    // Keep startup resilient and allow alternate config sources.
+  }
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   final themeController = Get.put(ThemeController(), permanent: true);
   await themeController.loadTheme();

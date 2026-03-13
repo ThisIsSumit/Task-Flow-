@@ -50,15 +50,47 @@ class ProfileView extends GetView<ProfileController> {
                 return const SizedBox.shrink();
               }
 
+              final hasPhoto =
+                  user.photoUrl != null && user.photoUrl!.trim().isNotEmpty;
+
               return Column(
                 children: [
                   CircleAvatar(
                     radius: 50,
                     backgroundColor: theme.colorScheme.primary,
-                    child: const Icon(
-                      Icons.person,
-                      size: 50,
-                      color: Colors.white,
+                    backgroundImage:
+                        hasPhoto ? NetworkImage(user.photoUrl!) : null,
+                    child:
+                        hasPhoto
+                            ? null
+                            : const Icon(
+                              Icons.person,
+                              size: 50,
+                              color: Colors.white,
+                            ),
+                  ),
+                  const SizedBox(height: 10),
+                  Obx(
+                    () => TextButton.icon(
+                      onPressed:
+                          controller.isUploadingPhoto.value
+                              ? null
+                              : controller.pickAndUploadProfilePhoto,
+                      icon:
+                          controller.isUploadingPhoto.value
+                              ? const SizedBox(
+                                height: 16,
+                                width: 16,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                              : const Icon(Icons.photo_camera_outlined),
+                      label: Text(
+                        controller.isUploadingPhoto.value
+                            ? 'Uploading...'
+                            : 'Change Photo',
+                      ),
                     ),
                   ),
                   const SizedBox(height: 16),
@@ -73,6 +105,33 @@ class ProfileView extends GetView<ProfileController> {
                     user.email,
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.hintColor,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color:
+                          controller.isProfileComplete
+                              ? Colors.green.withValues(alpha: 0.12)
+                              : Colors.orange.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Text(
+                      controller.isProfileComplete
+                          ? 'Profile Complete'
+                          : 'Profile Incomplete (Add Photo)',
+                      style: TextStyle(
+                        color:
+                            controller.isProfileComplete
+                                ? Colors.green
+                                : Colors.orange,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 12,
+                      ),
                     ),
                   ),
                   const SizedBox(height: 20),

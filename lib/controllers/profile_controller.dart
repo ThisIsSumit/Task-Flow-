@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:todo_app/controllers/theme_controller.dart';
 import '../data/services/auth_service.dart';
+import '../data/services/cloudinary_service.dart';
 
 class ProfileController extends GetxController {
   final AuthService _authService = Get.find<AuthService>();
   final ThemeController _themeController = Get.find<ThemeController>();
+  final CloudinaryService _cloudinaryService = Get.find<CloudinaryService>();
+  final ImagePicker _imagePicker = ImagePicker();
 
   final RxBool isLoading = false.obs;
   final RxBool isEditMode = false.obs;
+  final RxBool isUploadingPhoto = false.obs;
 
   final nameController = TextEditingController();
   final phoneController = TextEditingController();
@@ -16,6 +21,10 @@ class ProfileController extends GetxController {
 
   Rx<ThemeMode> get themeMode => _themeController.themeMode;
   bool get isDarkMode => _themeController.isDarkMode;
+  bool get isProfileComplete {
+    final photoUrl = _authService.userModel.value?.photoUrl;
+    return photoUrl != null && photoUrl.trim().isNotEmpty;
+  }
 
   @override
   void onInit() {
@@ -100,6 +109,66 @@ class ProfileController extends GetxController {
       );
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  Future<void> pickAndUploadProfilePhoto() async {
+    final user = _authService.userModel.value;
+    if (user == null) {
+      Get.snackbar(
+        'Error',
+        'User not found',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+      return;
+    }
+
+    try {
+      isUploadingPhoto.value = true;
+      final picked = await _imagePicker.pickImage(
+        source: ImageSource.gallery,
+        imageQuality: 85,
+        maxWidth: 1600,
+      );
+
+      if (picked == null) {
+        return;
+      }
+
+      final bytes = await picked.readAsBytes();
+      final uploadedUrl = await _cloudinaryService.uploadProfileImage(
+        bytes: bytes,
+        fileName: picked.name,
+      );
+
+      await _authService.updateProfile(
+        name: user.name,
+        phoneNumber: user.phoneNumber,
+        photoUrl: uploadedUrl,
+      );
+
+      photoUrlController.text = uploadedUrl;
+      update();
+
+      Get.snackbar(
+        'Success',
+        'Profile photo updated',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.green,
+        colorText: Colors.white,
+      );
+    } catch (e) {
+      Get.snackbar(
+        'Error',
+        'Failed to upload photo: $e',
+        snackPosition: SnackPosition.BOTTOM,
+        backgroundColor: Colors.red,
+        colorText: Colors.white,
+      );
+    } finally {
+      isUploadingPhoto.value = false;
     }
   }
 
