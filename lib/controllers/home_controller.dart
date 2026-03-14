@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
@@ -21,6 +23,7 @@ class HomeController extends GetxController {
   final SubscriptionService _subscriptionService =
       Get.find<SubscriptionService>();
   final Uuid _uuid = const Uuid();
+  StreamSubscription<List<Task>>? _tasksSubscription;
 
   final RxList<Task> tasks = <Task>[].obs;
   final RxList<Task> filteredTasks = <Task>[].obs;
@@ -65,6 +68,12 @@ class HomeController extends GetxController {
     fetchTasks();
   }
 
+  @override
+  void onClose() {
+    _tasksSubscription?.cancel();
+    super.onClose();
+  }
+
   Future<void> fetchTasks() async {
     try {
       isLoading.value = true;
@@ -83,6 +92,21 @@ class HomeController extends GetxController {
       filterTasks();
       await _syncUserStats(userId);
       await _notificationService.showOverdue(tasks);
+
+      await _tasksSubscription?.cancel();
+      _tasksSubscription = _firestoreService
+          .watchTasks(userId)
+          .listen(
+            (latestTasks) {
+              tasks.assignAll(latestTasks);
+              _refreshCategoryList();
+              filterTasks();
+              unawaited(_syncUserStats(userId));
+            },
+            onError: (error) {
+              Get.log('Failed to sync tasks in real-time: $error');
+            },
+          );
     } catch (e) {
       Get.snackbar('Error', 'Failed to fetch tasks: $e');
     } finally {
@@ -258,20 +282,6 @@ class HomeController extends GetxController {
       return;
     }
 
-    if (autoExecute.value && !canConfigureAutomation) {
-      Get.toNamed(Routes.SUBSCRIPTION);
-      return;
-    }
-
-    if (autoExecute.value &&
-        automationInstructionController.text.trim().isEmpty) {
-      Get.snackbar(
-        'Error',
-        'Please describe what the automation agent should do',
-      );
-      return;
-    }
-
     isLoading.value = true;
     try {
       final userId = _authService.getUserId();
@@ -298,14 +308,6 @@ class HomeController extends GetxController {
         reminderEnabled: reminderEnabled.value,
         reminderAt: selectedReminderDate,
         subtasks: draftSubtasks.toList(),
-        autoExecute: autoExecute.value,
-        automationInstruction: automationInstructionController.text.trim(),
-        automationMode: selectedAutomationMode.value,
-        triggerBeforeDeadline: triggerBeforeDeadline.value,
-        automationStatus:
-            autoExecute.value
-                ? AutomationStatus.enabled
-                : AutomationStatus.disabled,
       );
 
       final saved = await _firestoreService.addTask(userId, task);
@@ -338,20 +340,6 @@ class HomeController extends GetxController {
       return;
     }
 
-    if (autoExecute.value && !canConfigureAutomation) {
-      Get.toNamed(Routes.SUBSCRIPTION);
-      return;
-    }
-
-    if (autoExecute.value &&
-        automationInstructionController.text.trim().isEmpty) {
-      Get.snackbar(
-        'Error',
-        'Please describe what the automation agent should do',
-      );
-      return;
-    }
-
     isLoading.value = true;
     try {
       final userId = _authService.getUserId();
@@ -371,15 +359,6 @@ class HomeController extends GetxController {
         reminderEnabled: reminderEnabled.value,
         reminderAt: selectedReminderDate,
         subtasks: draftSubtasks.toList(),
-        autoExecute: autoExecute.value,
-        automationInstruction: automationInstructionController.text.trim(),
-        automationMode: selectedAutomationMode.value,
-        triggerBeforeDeadline: triggerBeforeDeadline.value,
-        automationStatus:
-            autoExecute.value
-                ? AutomationStatus.enabled
-                : AutomationStatus.disabled,
-        automationLastExecutedAt: null,
       );
 
       await _firestoreService.updateTask(userId, updated);
@@ -522,6 +501,64 @@ class HomeController extends GetxController {
       Get.snackbar('Success', 'Task rescheduled');
     } catch (e) {
       Get.snackbar('Error', 'Failed to reschedule task: $e');
+    }
+  }
+
+  Future<void> updateTaskAutomation(
+    Task task, {
+    required bool enabled,
+    required String instruction,
+    required AutomationMode mode,
+    required int triggerMinutes,
+  }) async {
+    final userId = _authService.getUserId();
+    if (userId == null) {
+      Get.snackbar('Error', 'User not authenticated');
+      return;
+    }
+
+    if (enabled && !canConfigureAutomation) {
+      Get.toNamed(Routes.SUBSCRIPTION);
+      return;
+    }
+
+    if (enabled && instruction.trim().isEmpty) {
+      Get.snackbar('Error', 'Please provide an agent instruction');
+      return;
+    }
+
+    if (enabled && task.isCompleted) {
+      Get.snackbar(
+        'Error',
+        'Task is already completed. Reopen it before enabling automation.',
+      );
+      return;
+    }
+
+    try {
+      final updated = task.copyWith(
+        autoExecute: enabled,
+        automationInstruction: enabled ? instruction.trim() : '',
+        automationMode: mode,
+        triggerBeforeDeadline: triggerMinutes,
+        automationStatus:
+            enabled ? AutomationStatus.enabled : AutomationStatus.disabled,
+      );
+
+      await _firestoreService.updateTask(userId, updated);
+      final index = tasks.indexWhere((item) => item.id == task.id);
+      if (index != -1) {
+        tasks[index] = updated;
+      }
+      filterTasks();
+      Get.snackbar(
+        'Success',
+        enabled
+            ? 'Automation enabled for task'
+            : 'Automation disabled for task',
+      );
+    } catch (e) {
+      Get.snackbar('Error', 'Failed to update automation: $e');
     }
   }
 

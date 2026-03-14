@@ -12,6 +12,7 @@ import '../modules/profile_view.dart';
 import '../bindings/splash_binding.dart';
 import '../modules/splash_view.dart';
 import '../modules/subscription_view.dart';
+import '../modules/automation_view.dart';
 
 part 'app_routes.dart';
 
@@ -42,5 +43,6 @@ class AppPages {
       binding: AnalyticsBinding(),
     ),
     GetPage(name: Routes.SUBSCRIPTION, page: () => const SubscriptionView()),
+    GetPage(name: Routes.AUTOMATION, page: () => const AutomationView()),
   ];
 }

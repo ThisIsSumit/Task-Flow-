@@ -87,6 +87,21 @@ class FirestoreService extends GetxService {
     }
   }
 
+  Stream<List<Task>> watchTasks(String uid) {
+    return _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('tasks')
+        .orderBy('dueDate')
+        .snapshots()
+        .map(
+          (snapshot) =>
+              snapshot.docs
+                  .map((doc) => Task.fromMap({...doc.data(), 'id': doc.id}))
+                  .toList(),
+        );
+  }
+
   Future<Task> addTask(String uid, Task task) async {
     final tasksRef = _firestore
         .collection('users')

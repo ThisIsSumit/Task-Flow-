@@ -8,4 +8,5 @@ abstract class Routes {
   static const PROFILE = '/profile';
   static const ANALYTICS = '/analytics';
   static const SUBSCRIPTION = '/subscription';
+  static const AUTOMATION = '/automation';
 }

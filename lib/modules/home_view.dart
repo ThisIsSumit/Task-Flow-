@@ -28,12 +28,26 @@ class HomeView extends GetView<HomeController> {
           ),
         ],
       ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          controller.resetTaskForm();
-          _showTaskForm(context);
-        },
-        child: const Icon(Icons.add),
+      floatingActionButton: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.end,
+        children: [
+          FloatingActionButton.extended(
+            heroTag: 'automation_fab',
+            onPressed: () => Get.toNamed(Routes.AUTOMATION),
+            icon: const Icon(Icons.auto_awesome),
+            label: const Text('Agent'),
+          ),
+          const SizedBox(height: 10),
+          FloatingActionButton(
+            heroTag: 'add_task_fab',
+            onPressed: () {
+              controller.resetTaskForm();
+              _showTaskForm(context);
+            },
+            child: const Icon(Icons.add),
+          ),
+        ],
       ),
       body: Column(
         children: [_buildTopControls(), Expanded(child: _buildTaskList())],
@@ -314,13 +328,18 @@ class HomeView extends GetView<HomeController> {
                 const SizedBox(height: 10),
                 Text('Notes: ${task.notes}'),
               ],
-              if (task.autoExecute) ...[
+              if (task.autoExecute ||
+                  task.automationInstruction.isNotEmpty ||
+                  task.generatedAutomationSummary.isNotEmpty ||
+                  task.generatedAutomationContent.isNotEmpty ||
+                  task.automationLastExecutedAt != null) ...[
                 const SizedBox(height: 10),
                 const Text(
                   'Automation',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
                 Text('Mode: ${_automationModeLabel(task.automationMode)}'),
+                Text('Status: ${task.autoExecute ? 'Enabled' : 'Disabled'}'),
                 Text(
                   task.automationInstruction.isEmpty
                       ? 'Instruction: (none)'
@@ -329,6 +348,10 @@ class HomeView extends GetView<HomeController> {
                 Text(
                   'Trigger: ${task.triggerBeforeDeadline} minutes before deadline',
                 ),
+                if (task.automationLastExecutedAt != null)
+                  Text(
+                    'Last executed: ${controller.formatDate(task.automationLastExecutedAt!)}',
+                  ),
                 if (task.generatedAutomationSummary.isNotEmpty ||
                     task.generatedAutomationContent.isNotEmpty) ...[
                   const SizedBox(height: 8),
@@ -591,124 +614,6 @@ class HomeView extends GetView<HomeController> {
                           ),
                         ],
                       ),
-                    const SizedBox(height: 12),
-                    Obx(
-                      () => Card(
-                        child: Padding(
-                          padding: const EdgeInsets.all(12),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Automation Settings',
-                                style: Theme.of(context).textTheme.titleMedium
-                                    ?.copyWith(fontWeight: FontWeight.w600),
-                              ),
-                              const SizedBox(height: 8),
-                              SwitchListTile(
-                                contentPadding: EdgeInsets.zero,
-                                title: const Text('Enable Automation'),
-                                subtitle: Text(
-                                  controller.canConfigureAutomation
-                                      ? 'Automatically execute this task before the deadline if it is still pending.'
-                                      : 'Automation is a premium feature. Upgrade to enable automated task execution.',
-                                ),
-                                value:
-                                    controller.canConfigureAutomation
-                                        ? ctrl.autoExecute.value
-                                        : false,
-                                onChanged: controller.onAutomationToggleChanged,
-                              ),
-                              if (!controller.canConfigureAutomation)
-                                Align(
-                                  alignment: Alignment.centerLeft,
-                                  child: ElevatedButton.icon(
-                                    onPressed:
-                                        () => Get.toNamed(Routes.SUBSCRIPTION),
-                                    icon: const Icon(Icons.workspace_premium),
-                                    label: const Text('Upgrade to Premium'),
-                                  ),
-                                ),
-                              if (controller.canConfigureAutomation &&
-                                  ctrl.autoExecute.value) ...[
-                                const SizedBox(height: 12),
-                                TextField(
-                                  controller:
-                                      ctrl.automationInstructionController,
-                                  minLines: 2,
-                                  maxLines: 4,
-                                  decoration: const InputDecoration(
-                                    labelText: 'Agent goal / instruction',
-                                    hintText:
-                                        'Example: Draft a short status email for this task and summarize blockers.',
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-                                DropdownButtonFormField<AutomationMode>(
-                                  initialValue:
-                                      ctrl.selectedAutomationMode.value,
-                                  items:
-                                      AutomationMode.values
-                                          .map(
-                                            (item) => DropdownMenuItem(
-                                              value: item,
-                                              child: Text(
-                                                _automationModeLabel(item),
-                                              ),
-                                            ),
-                                          )
-                                          .toList(),
-                                  onChanged: (value) {
-                                    if (value == null) {
-                                      return;
-                                    }
-                                    ctrl.selectedAutomationMode.value = value;
-                                    ctrl.update();
-                                  },
-                                  decoration: const InputDecoration(
-                                    labelText: 'Run mode',
-                                  ),
-                                ),
-                                const SizedBox(height: 10),
-                                DropdownButtonFormField<int>(
-                                  initialValue:
-                                      ctrl.triggerBeforeDeadline.value,
-                                  items:
-                                      const [5, 10, 30, 60]
-                                          .map(
-                                            (item) => DropdownMenuItem(
-                                              value: item,
-                                              child: Text(
-                                                '$item minutes before deadline',
-                                              ),
-                                            ),
-                                          )
-                                          .toList(),
-                                  onChanged: (value) {
-                                    if (value == null) {
-                                      return;
-                                    }
-                                    ctrl.triggerBeforeDeadline.value = value;
-                                    ctrl.update();
-                                  },
-                                  decoration: const InputDecoration(
-                                    labelText: 'Trigger Time',
-                                  ),
-                                ),
-                                const SizedBox(height: 8),
-                                Text(
-                                  ctrl.selectedAutomationMode.value ==
-                                          AutomationMode.execute
-                                      ? 'Execute mode: the agent can complete this task automatically after running.'
-                                      : 'Suggest mode: the agent prepares output and keeps the task pending for your review.',
-                                  style: Theme.of(context).textTheme.bodySmall,
-                                ),
-                              ],
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
                     const SizedBox(height: 10),
                     Row(
                       children: [
