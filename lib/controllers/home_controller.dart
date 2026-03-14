@@ -23,7 +23,7 @@ class HomeController extends GetxController {
   final RxString selectedCategory = 'All'.obs;
   final RxList<String> categories = <String>['All'].obs;
   final RxBool isLoading = false.obs;
-  final RxBool showCompleted = true.obs;
+  final RxBool showCompleted = false.obs;
 
   final RxString searchQuery = ''.obs;
   final Rx<TaskSortOption> sortOption = TaskSortOption.dueDate.obs;
@@ -109,8 +109,8 @@ class HomeController extends GetxController {
   void filterTasks() {
     List<Task> result = tasks.toList();
 
-    if (!showCompleted.value) {
-      result = result.where((task) => !task.isCompleted).toList();
+    if (showCompleted.value) {
+      result = result.where((task) => task.isCompleted).toList();
     }
 
     if (selectedCategory.value != 'All') {
