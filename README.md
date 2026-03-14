@@ -4,8 +4,9 @@
 
 TaskFlow is a feature-rich task management app built with Flutter using the GetX state management pattern. It helps users organize their tasks efficiently while providing insightful analytics on productivity.
 
-![Image](https://github.com/user-attachments/assets/62487743-32f6-4198-92a8-dbc5f4dbdda4)
-
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/62487743-32f6-4198-92a8-dbc5f4dbdda4" width="250"/>
+</p>
 ## Features
 
 - **Beautiful UI**: Clean, modern interface with light and dark theme support
@@ -90,11 +91,14 @@ lib/
 ```
 
 ## Screenshots
-![Image](https://github.com/user-attachments/assets/1ae6c27f-88d4-4105-b72a-1615852b0c52)
-![Image](https://github.com/user-attachments/assets/774f7071-4337-4050-ad23-d813fc594e0c) ![Image](https://github.com/user-attachments/assets/b84da426-f32b-4c0f-9ded-da437a73ad71)
-![Image](https://github.com/user-attachments/assets/0ad3bf5a-7c91-4731-b0ee-28877be81cce)
-![Image](https://github.com/user-attachments/assets/e0ebe420-513a-4284-9603-8dca307a19a6)
-![Image](https://github.com/user-attachments/assets/3595e4d4-5dfc-41c2-b8a9-d2b09653f0be)
+
+<p align="center">
+  <img src="https://github.com/user-attachments/assets/5d3ac309-4419-4b6f-b855-6c262a263661" width="250"/>
+  <img src="https://github.com/user-attachments/assets/b5e0f000-147f-4af9-a00b-5005343fbecb" width="250"/>
+  <img src="https://github.com/user-attachments/assets/1bb65afc-f017-4c0a-a51c-f0b41bc66da2" width="250"/>
+  <img src="https://github.com/user-attachments/assets/5343f335-52a1-422e-a27f-7899cfd3c6a0" width="250"/>
+</p>
+
 
 
 
