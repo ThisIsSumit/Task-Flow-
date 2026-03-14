@@ -13,8 +13,33 @@ class NotificationService extends GetxService {
     tz.initializeTimeZones();
 
     const android = AndroidInitializationSettings('@mipmap/ic_launcher');
-    const settings = InitializationSettings(android: android);
+    const darwin = DarwinInitializationSettings();
+    const settings = InitializationSettings(android: android, iOS: darwin);
     await _plugin.initialize(settings);
+
+    await _requestPermissions();
+  }
+
+  Future<void> _requestPermissions() async {
+    final androidImplementation =
+        _plugin
+            .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin
+            >();
+
+    await androidImplementation?.requestNotificationsPermission();
+    await androidImplementation?.requestExactAlarmsPermission();
+
+    final iosImplementation =
+        _plugin
+            .resolvePlatformSpecificImplementation<
+              IOSFlutterLocalNotificationsPlugin
+            >();
+    await iosImplementation?.requestPermissions(
+      alert: true,
+      badge: true,
+      sound: true,
+    );
   }
 
   Future<void> scheduleReminder(Task task) async {
