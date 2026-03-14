@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:todo_app/data/services/auth_service.dart';
@@ -59,7 +60,9 @@ class ProfileView extends GetView<ProfileController> {
                     radius: 50,
                     backgroundColor: theme.colorScheme.primary,
                     backgroundImage:
-                        hasPhoto ? NetworkImage(user.photoUrl!) : null,
+                        hasPhoto
+                            ? CachedNetworkImageProvider(user.photoUrl!)
+                            : null,
                     child:
                         hasPhoto
                             ? null
