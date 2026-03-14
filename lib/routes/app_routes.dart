@@ -7,4 +7,5 @@ abstract class Routes {
   static const CALENDAR = '/calendar';
   static const PROFILE = '/profile';
   static const ANALYTICS = '/analytics';
+  static const SUBSCRIPTION = '/subscription';
 }

@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:get/get.dart';
+import 'package:todo_app/data/models/automation_log_model.dart';
 import 'package:todo_app/data/models/user_models.dart';
 import '../models/task_model.dart';
 import 'local_cache_service.dart';
@@ -43,6 +44,25 @@ class FirestoreService extends GetxService {
 
   Future<void> updateUserStats(String uid, Map<String, int> stats) async {
     await _firestore.collection('users').doc(uid).update({'taskStats': stats});
+  }
+
+  Future<void> updateUserSubscription(
+    String uid, {
+    required SubscriptionType subscriptionType,
+    DateTime? subscriptionStartDate,
+    DateTime? subscriptionEndDate,
+  }) async {
+    await _firestore.collection('users').doc(uid).set({
+      'subscriptionType': subscriptionType.name,
+      'subscriptionStartDate':
+          subscriptionStartDate != null
+              ? Timestamp.fromDate(subscriptionStartDate)
+              : null,
+      'subscriptionEndDate':
+          subscriptionEndDate != null
+              ? Timestamp.fromDate(subscriptionEndDate)
+              : null,
+    }, SetOptions(merge: true));
   }
 
   // Task Methods
@@ -167,5 +187,26 @@ class FirestoreService extends GetxService {
       'completionByDay': completionByDay,
       'tasksByCategory': tasksByCategory,
     };
+  }
+
+  Stream<List<AutomationLog>> watchAutomationLogs(
+    String uid, {
+    int limit = 50,
+  }) {
+    return _firestore
+        .collection('automation_logs')
+        .where('userId', isEqualTo: uid)
+        .orderBy('executionTime', descending: true)
+        .limit(limit)
+        .snapshots()
+        .map(
+          (snapshot) =>
+              snapshot.docs
+                  .map(
+                    (doc) =>
+                        AutomationLog.fromMap({...doc.data(), 'id': doc.id}),
+                  )
+                  .toList(),
+        );
   }
 }

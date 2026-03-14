@@ -47,6 +47,15 @@ class LocalCacheService extends GetxService {
       'reminderAt': task.reminderAt?.toIso8601String(),
       'recurrence': task.recurrence.name,
       'lastRecurrenceAt': task.lastRecurrenceAt?.toIso8601String(),
+      'autoExecute': task.autoExecute,
+      'automationInstruction': task.automationInstruction,
+      'automationMode': task.automationMode.name,
+      'triggerBeforeDeadline': task.triggerBeforeDeadline,
+      'automationStatus': task.automationStatus.name,
+      'automationLastExecutedAt':
+          task.automationLastExecutedAt?.toIso8601String(),
+      'generatedAutomationSummary': task.generatedAutomationSummary,
+      'generatedAutomationContent': task.generatedAutomationContent,
       'subtasks':
           task.subtasks
               .map(
@@ -54,17 +63,6 @@ class LocalCacheService extends GetxService {
                   'id': item.id,
                   'title': item.title,
                   'isDone': item.isDone,
-                },
-              )
-              .toList(),
-      'attachments':
-          task.attachments
-              .map(
-                (item) => {
-                  'id': item.id,
-                  'label': item.label,
-                  'url': item.url,
-                  'type': item.type.name,
                 },
               )
               .toList(),
@@ -86,6 +84,7 @@ class LocalCacheService extends GetxService {
       'createdAt': parseDate(map['createdAt']) ?? DateTime.now(),
       'reminderAt': parseDate(map['reminderAt']),
       'lastRecurrenceAt': parseDate(map['lastRecurrenceAt']),
+      'automationLastExecutedAt': parseDate(map['automationLastExecutedAt']),
     };
   }
 }

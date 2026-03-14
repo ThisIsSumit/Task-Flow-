@@ -5,6 +5,7 @@ import '../data/services/cloudinary_service.dart';
 import '../data/services/firestore_service.dart';
 import '../data/services/local_cache_service.dart';
 import '../data/services/notification_service.dart';
+import '../data/services/subscription_service.dart';
 
 class SplashBinding extends Bindings {
   @override
@@ -14,6 +15,7 @@ class SplashBinding extends Bindings {
     Get.put(AuthService());
     Get.put(CloudinaryService());
     Get.put(NotificationService());
+    Get.put(SubscriptionService());
     Get.put(SplashController());
   }
 }

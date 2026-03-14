@@ -2,7 +2,11 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 
 enum RecurrenceType { none, daily, weekly, monthly }
 
-enum AttachmentType { image, file, link }
+enum AutomationMode { suggest, execute }
+
+enum AutomationStatus { enabled, disabled }
+
+const Object _taskNoChange = Object();
 
 class SubTask {
   final String id;
@@ -32,36 +36,6 @@ class SubTask {
   }
 }
 
-class TaskAttachment {
-  final String id;
-  final String label;
-  final String url;
-  final AttachmentType type;
-
-  TaskAttachment({
-    required this.id,
-    required this.label,
-    required this.url,
-    required this.type,
-  });
-
-  Map<String, dynamic> toMap() {
-    return {'id': id, 'label': label, 'url': url, 'type': type.name};
-  }
-
-  factory TaskAttachment.fromMap(Map<String, dynamic> map) {
-    return TaskAttachment(
-      id: map['id'] ?? '',
-      label: map['label'] ?? '',
-      url: map['url'] ?? '',
-      type: AttachmentType.values.firstWhere(
-        (value) => value.name == map['type'],
-        orElse: () => AttachmentType.link,
-      ),
-    );
-  }
-}
-
 class Task {
   final String id;
   final String title;
@@ -79,7 +53,14 @@ class Task {
   final RecurrenceType recurrence;
   final DateTime? lastRecurrenceAt;
   final List<SubTask> subtasks;
-  final List<TaskAttachment> attachments;
+  final bool autoExecute;
+  final String automationInstruction;
+  final AutomationMode automationMode;
+  final int triggerBeforeDeadline;
+  final AutomationStatus automationStatus;
+  final DateTime? automationLastExecutedAt;
+  final String generatedAutomationSummary;
+  final String generatedAutomationContent;
 
   Task({
     required this.id,
@@ -98,7 +79,14 @@ class Task {
     this.recurrence = RecurrenceType.none,
     this.lastRecurrenceAt,
     this.subtasks = const [],
-    this.attachments = const [],
+    this.autoExecute = false,
+    this.automationInstruction = '',
+    this.automationMode = AutomationMode.execute,
+    this.triggerBeforeDeadline = 10,
+    this.automationStatus = AutomationStatus.disabled,
+    this.automationLastExecutedAt,
+    this.generatedAutomationSummary = '',
+    this.generatedAutomationContent = '',
   });
 
   Task copyWith({
@@ -109,16 +97,23 @@ class Task {
     int? priority,
     DateTime? dueDate,
     bool? isCompleted,
-    DateTime? completedAt,
+    Object? completedAt = _taskNoChange,
     DateTime? createdAt,
     String? userId,
     String? notes,
     bool? reminderEnabled,
-    DateTime? reminderAt,
+    Object? reminderAt = _taskNoChange,
     RecurrenceType? recurrence,
-    DateTime? lastRecurrenceAt,
+    Object? lastRecurrenceAt = _taskNoChange,
     List<SubTask>? subtasks,
-    List<TaskAttachment>? attachments,
+    bool? autoExecute,
+    String? automationInstruction,
+    AutomationMode? automationMode,
+    int? triggerBeforeDeadline,
+    AutomationStatus? automationStatus,
+    Object? automationLastExecutedAt = _taskNoChange,
+    String? generatedAutomationSummary,
+    String? generatedAutomationContent,
   }) {
     return Task(
       id: id ?? this.id,
@@ -128,16 +123,39 @@ class Task {
       priority: priority ?? this.priority,
       dueDate: dueDate ?? this.dueDate,
       isCompleted: isCompleted ?? this.isCompleted,
-      completedAt: completedAt ?? this.completedAt,
+      completedAt:
+          identical(completedAt, _taskNoChange)
+              ? this.completedAt
+              : completedAt as DateTime?,
       createdAt: createdAt ?? this.createdAt,
       userId: userId ?? this.userId,
       notes: notes ?? this.notes,
       reminderEnabled: reminderEnabled ?? this.reminderEnabled,
-      reminderAt: reminderAt ?? this.reminderAt,
+      reminderAt:
+          identical(reminderAt, _taskNoChange)
+              ? this.reminderAt
+              : reminderAt as DateTime?,
       recurrence: recurrence ?? this.recurrence,
-      lastRecurrenceAt: lastRecurrenceAt ?? this.lastRecurrenceAt,
+      lastRecurrenceAt:
+          identical(lastRecurrenceAt, _taskNoChange)
+              ? this.lastRecurrenceAt
+              : lastRecurrenceAt as DateTime?,
       subtasks: subtasks ?? this.subtasks,
-      attachments: attachments ?? this.attachments,
+      autoExecute: autoExecute ?? this.autoExecute,
+      automationInstruction:
+          automationInstruction ?? this.automationInstruction,
+      automationMode: automationMode ?? this.automationMode,
+      triggerBeforeDeadline:
+          triggerBeforeDeadline ?? this.triggerBeforeDeadline,
+      automationStatus: automationStatus ?? this.automationStatus,
+      automationLastExecutedAt:
+          identical(automationLastExecutedAt, _taskNoChange)
+              ? this.automationLastExecutedAt
+              : automationLastExecutedAt as DateTime?,
+      generatedAutomationSummary:
+          generatedAutomationSummary ?? this.generatedAutomationSummary,
+      generatedAutomationContent:
+          generatedAutomationContent ?? this.generatedAutomationContent,
     );
   }
 
@@ -149,6 +167,7 @@ class Task {
       'priority': priority,
       'dueDate': Timestamp.fromDate(dueDate),
       'isCompleted': isCompleted,
+      'status': isCompleted ? 'completed' : 'pending',
       'completedAt':
           completedAt != null ? Timestamp.fromDate(completedAt!) : null,
       'createdAt': Timestamp.fromDate(createdAt),
@@ -162,7 +181,17 @@ class Task {
               ? Timestamp.fromDate(lastRecurrenceAt!)
               : null,
       'subtasks': subtasks.map((item) => item.toMap()).toList(),
-      'attachments': attachments.map((item) => item.toMap()).toList(),
+      'autoExecute': autoExecute,
+      'automationInstruction': automationInstruction,
+      'automationMode': automationMode.name,
+      'triggerBeforeDeadline': triggerBeforeDeadline,
+      'automationStatus': automationStatus.name,
+      'automationLastExecutedAt':
+          automationLastExecutedAt != null
+              ? Timestamp.fromDate(automationLastExecutedAt!)
+              : null,
+      'generatedAutomationSummary': generatedAutomationSummary,
+      'generatedAutomationContent': generatedAutomationContent,
     };
   }
 
@@ -203,7 +232,7 @@ class Task {
       category: map['category'] ?? '',
       priority: map['priority'] ?? 2,
       dueDate: parseDate(map['dueDate']),
-      isCompleted: map['isCompleted'] ?? false,
+      isCompleted: map['isCompleted'] ?? (map['status'] == 'completed'),
       completedAt: parseNullableDate(map['completedAt']),
       createdAt: parseDate(map['createdAt']),
       userId: map['userId'] ?? '',
@@ -220,14 +249,24 @@ class Task {
               .whereType<Map>()
               .map((item) => SubTask.fromMap(Map<String, dynamic>.from(item)))
               .toList(),
-      attachments:
-          ((map['attachments'] as List?) ?? [])
-              .whereType<Map>()
-              .map(
-                (item) =>
-                    TaskAttachment.fromMap(Map<String, dynamic>.from(item)),
-              )
-              .toList(),
+      autoExecute: map['autoExecute'] ?? false,
+      automationInstruction: (map['automationInstruction'] ?? '').toString(),
+      automationMode: AutomationMode.values.firstWhere(
+        (value) => value.name == map['automationMode'],
+        orElse: () => AutomationMode.execute,
+      ),
+      triggerBeforeDeadline: map['triggerBeforeDeadline'] ?? 10,
+      automationStatus: AutomationStatus.values.firstWhere(
+        (value) => value.name == map['automationStatus'],
+        orElse: () => AutomationStatus.disabled,
+      ),
+      automationLastExecutedAt: parseNullableDate(
+        map['automationLastExecutedAt'],
+      ),
+      generatedAutomationSummary:
+          (map['generatedAutomationSummary'] ?? '').toString(),
+      generatedAutomationContent:
+          (map['generatedAutomationContent'] ?? '').toString(),
     );
   }
 }

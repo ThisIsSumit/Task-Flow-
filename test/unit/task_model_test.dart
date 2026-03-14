@@ -70,7 +70,7 @@ void main() {
       expect(task.reminderAt, reminderAt);
       expect(task.subtasks, hasLength(1));
       expect(task.subtasks.first.isDone, isTrue);
-      expect(task.attachments.first.type, AttachmentType.link);
+     
     });
 
     test('toMap writes recurrence and nested collections', () {
@@ -86,14 +86,7 @@ void main() {
         userId: 'u1',
         recurrence: RecurrenceType.daily,
         subtasks: [SubTask(id: 's1', title: 'Sub')],
-        attachments: [
-          TaskAttachment(
-            id: 'a1',
-            label: 'Attachment',
-            url: 'https://example.com',
-            type: AttachmentType.file,
-          ),
-        ],
+       
       );
 
       final map = task.toMap();

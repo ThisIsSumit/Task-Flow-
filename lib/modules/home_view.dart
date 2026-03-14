@@ -314,6 +314,38 @@ class HomeView extends GetView<HomeController> {
                 const SizedBox(height: 10),
                 Text('Notes: ${task.notes}'),
               ],
+              if (task.autoExecute) ...[
+                const SizedBox(height: 10),
+                const Text(
+                  'Automation',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                Text('Mode: ${_automationModeLabel(task.automationMode)}'),
+                Text(
+                  task.automationInstruction.isEmpty
+                      ? 'Instruction: (none)'
+                      : 'Instruction: ${task.automationInstruction}',
+                ),
+                Text(
+                  'Trigger: ${task.triggerBeforeDeadline} minutes before deadline',
+                ),
+                if (task.generatedAutomationSummary.isNotEmpty ||
+                    task.generatedAutomationContent.isNotEmpty) ...[
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Last Agent Output',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  if (task.generatedAutomationSummary.isNotEmpty)
+                    Text('Summary: ${task.generatedAutomationSummary}'),
+                  if (task.generatedAutomationContent.isNotEmpty)
+                    Text(
+                      task.generatedAutomationContent,
+                      maxLines: 6,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                ],
+              ],
               if (task.subtasks.isNotEmpty) ...[
                 const SizedBox(height: 14),
                 const Text(
@@ -326,32 +358,6 @@ class HomeView extends GetView<HomeController> {
                     value: item.isDone,
                     title: Text(item.title),
                     onChanged: (_) => controller.toggleSubtask(task, item),
-                  ),
-                ),
-              ],
-              if (task.attachments.isNotEmpty) ...[
-                const SizedBox(height: 14),
-                const Text(
-                  'Attachments',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                ...task.attachments.map(
-                  (item) => ListTile(
-                    contentPadding: EdgeInsets.zero,
-                    dense: true,
-                    leading: Icon(
-                      item.type == AttachmentType.image
-                          ? Icons.image
-                          : item.type == AttachmentType.file
-                          ? Icons.insert_drive_file
-                          : Icons.link,
-                    ),
-                    title: Text(item.label),
-                    subtitle: Text(
-                      item.url,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
                   ),
                 ),
               ],
@@ -585,6 +591,124 @@ class HomeView extends GetView<HomeController> {
                           ),
                         ],
                       ),
+                    const SizedBox(height: 12),
+                    Obx(
+                      () => Card(
+                        child: Padding(
+                          padding: const EdgeInsets.all(12),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Automation Settings',
+                                style: Theme.of(context).textTheme.titleMedium
+                                    ?.copyWith(fontWeight: FontWeight.w600),
+                              ),
+                              const SizedBox(height: 8),
+                              SwitchListTile(
+                                contentPadding: EdgeInsets.zero,
+                                title: const Text('Enable Automation'),
+                                subtitle: Text(
+                                  controller.canConfigureAutomation
+                                      ? 'Automatically execute this task before the deadline if it is still pending.'
+                                      : 'Automation is a premium feature. Upgrade to enable automated task execution.',
+                                ),
+                                value:
+                                    controller.canConfigureAutomation
+                                        ? ctrl.autoExecute.value
+                                        : false,
+                                onChanged: controller.onAutomationToggleChanged,
+                              ),
+                              if (!controller.canConfigureAutomation)
+                                Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: ElevatedButton.icon(
+                                    onPressed:
+                                        () => Get.toNamed(Routes.SUBSCRIPTION),
+                                    icon: const Icon(Icons.workspace_premium),
+                                    label: const Text('Upgrade to Premium'),
+                                  ),
+                                ),
+                              if (controller.canConfigureAutomation &&
+                                  ctrl.autoExecute.value) ...[
+                                const SizedBox(height: 12),
+                                TextField(
+                                  controller:
+                                      ctrl.automationInstructionController,
+                                  minLines: 2,
+                                  maxLines: 4,
+                                  decoration: const InputDecoration(
+                                    labelText: 'Agent goal / instruction',
+                                    hintText:
+                                        'Example: Draft a short status email for this task and summarize blockers.',
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                DropdownButtonFormField<AutomationMode>(
+                                  initialValue:
+                                      ctrl.selectedAutomationMode.value,
+                                  items:
+                                      AutomationMode.values
+                                          .map(
+                                            (item) => DropdownMenuItem(
+                                              value: item,
+                                              child: Text(
+                                                _automationModeLabel(item),
+                                              ),
+                                            ),
+                                          )
+                                          .toList(),
+                                  onChanged: (value) {
+                                    if (value == null) {
+                                      return;
+                                    }
+                                    ctrl.selectedAutomationMode.value = value;
+                                    ctrl.update();
+                                  },
+                                  decoration: const InputDecoration(
+                                    labelText: 'Run mode',
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                DropdownButtonFormField<int>(
+                                  initialValue:
+                                      ctrl.triggerBeforeDeadline.value,
+                                  items:
+                                      const [5, 10, 30, 60]
+                                          .map(
+                                            (item) => DropdownMenuItem(
+                                              value: item,
+                                              child: Text(
+                                                '$item minutes before deadline',
+                                              ),
+                                            ),
+                                          )
+                                          .toList(),
+                                  onChanged: (value) {
+                                    if (value == null) {
+                                      return;
+                                    }
+                                    ctrl.triggerBeforeDeadline.value = value;
+                                    ctrl.update();
+                                  },
+                                  decoration: const InputDecoration(
+                                    labelText: 'Trigger Time',
+                                  ),
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  ctrl.selectedAutomationMode.value ==
+                                          AutomationMode.execute
+                                      ? 'Execute mode: the agent can complete this task automatically after running.'
+                                      : 'Suggest mode: the agent prepares output and keeps the task pending for your review.',
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
                     const SizedBox(height: 10),
                     Row(
                       children: [
@@ -613,85 +737,6 @@ class HomeView extends GetView<HomeController> {
                                     label: Text(item.title),
                                     onDeleted:
                                         () => ctrl.removeDraftSubtask(item.id),
-                                  ),
-                                )
-                                .toList(),
-                      ),
-                    const SizedBox(height: 10),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: TextField(
-                            controller: ctrl.attachmentLabelController,
-                            decoration: const InputDecoration(
-                              labelText: 'Attachment label',
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: TextField(
-                            controller: ctrl.attachmentUrlController,
-                            decoration: const InputDecoration(
-                              labelText: 'Image/File/Link URL',
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      children: [
-                        Expanded(
-                          child: DropdownButtonFormField<AttachmentType>(
-                            initialValue: ctrl.selectedAttachmentType.value,
-                            items:
-                                AttachmentType.values
-                                    .map(
-                                      (item) => DropdownMenuItem(
-                                        value: item,
-                                        child: Text(item.name),
-                                      ),
-                                    )
-                                    .toList(),
-                            onChanged: (value) {
-                              if (value != null) {
-                                ctrl.selectedAttachmentType.value = value;
-                                ctrl.update();
-                              }
-                            },
-                            decoration: const InputDecoration(
-                              labelText: 'Attachment Type',
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 8),
-                        IconButton(
-                          onPressed: ctrl.addDraftAttachment,
-                          icon: const Icon(Icons.attach_file),
-                        ),
-                      ],
-                    ),
-                    if (ctrl.draftAttachments.isNotEmpty)
-                      Column(
-                        children:
-                            ctrl.draftAttachments
-                                .map(
-                                  (item) => ListTile(
-                                    dense: true,
-                                    title: Text(item.label),
-                                    subtitle: Text(
-                                      item.url,
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                    trailing: IconButton(
-                                      icon: const Icon(Icons.close),
-                                      onPressed:
-                                          () => ctrl.removeDraftAttachment(
-                                            item.id,
-                                          ),
-                                    ),
                                   ),
                                 )
                                 .toList(),
@@ -731,5 +776,14 @@ class HomeView extends GetView<HomeController> {
       ),
       isScrollControlled: true,
     );
+  }
+
+  String _automationModeLabel(AutomationMode mode) {
+    switch (mode) {
+      case AutomationMode.execute:
+        return 'Execute and complete task';
+      case AutomationMode.suggest:
+        return 'Suggest only (review first)';
+    }
   }
 }

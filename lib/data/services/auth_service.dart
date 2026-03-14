@@ -316,10 +316,23 @@ class AuthService extends GetxService {
       photoUrl: photoUrl,
       createdAt: currentUser.createdAt,
       taskStats: currentUser.taskStats,
+      subscriptionType: currentUser.subscriptionType,
+      subscriptionStartDate: currentUser.subscriptionStartDate,
+      subscriptionEndDate: currentUser.subscriptionEndDate,
     );
 
     await _firestoreService.updateUserData(updatedUser);
     userModel.value = updatedUser;
+  }
+
+  Future<void> refreshUserModel() async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) {
+      userModel.value = null;
+      return;
+    }
+
+    userModel.value = await _firestoreService.getUserData(uid);
   }
 
   bool isLoggedIn() {

@@ -6,6 +6,8 @@ import '../data/models/task_model.dart';
 import '../data/services/firestore_service.dart';
 import '../data/services/auth_service.dart';
 import '../data/services/notification_service.dart';
+import '../data/services/subscription_service.dart';
+import '../routes/app_pages.dart';
 
 enum TaskSortOption { dueDate, priority, recent }
 
@@ -16,6 +18,8 @@ class HomeController extends GetxController {
   final AuthService _authService = Get.find<AuthService>();
   final NotificationService _notificationService =
       Get.find<NotificationService>();
+  final SubscriptionService _subscriptionService =
+      Get.find<SubscriptionService>();
   final Uuid _uuid = const Uuid();
 
   final RxList<Task> tasks = <Task>[].obs;
@@ -33,21 +37,27 @@ class HomeController extends GetxController {
   final TextEditingController taskDescController = TextEditingController();
   final TextEditingController taskCategoryController = TextEditingController();
   final TextEditingController taskNotesController = TextEditingController();
-  final TextEditingController subtaskController = TextEditingController();
-  final TextEditingController attachmentLabelController =
+  final TextEditingController automationInstructionController =
       TextEditingController();
-  final TextEditingController attachmentUrlController = TextEditingController();
+  final TextEditingController subtaskController = TextEditingController();
 
   final RxList<SubTask> draftSubtasks = <SubTask>[].obs;
-  final RxList<TaskAttachment> draftAttachments = <TaskAttachment>[].obs;
 
-  final Rx<AttachmentType> selectedAttachmentType = AttachmentType.link.obs;
   final Rx<RecurrenceType> selectedRecurrence = RecurrenceType.none.obs;
   final RxBool reminderEnabled = false.obs;
+  final RxBool autoExecute = false.obs;
+  final Rx<AutomationMode> selectedAutomationMode = AutomationMode.execute.obs;
+  final RxInt triggerBeforeDeadline = 10.obs;
 
   DateTime? selectedDate;
   DateTime? selectedReminderDate;
   int selectedPriority = 2;
+
+  bool get isPremiumUser => _subscriptionService.isPremium.value;
+
+  // When kDevBypassSubscription is on, isPremiumUser is always true,
+  // so canConfigureAutomation will always return true in dev mode.
+  bool get canConfigureAutomation => isPremiumUser;
 
   @override
   void onInit() {
@@ -177,18 +187,18 @@ class HomeController extends GetxController {
     taskDescController.clear();
     taskCategoryController.clear();
     taskNotesController.clear();
+    automationInstructionController.clear();
     subtaskController.clear();
-    attachmentLabelController.clear();
-    attachmentUrlController.clear();
     draftSubtasks.clear();
-    draftAttachments.clear();
 
     selectedDate = DateTime.now().add(const Duration(days: 1));
     selectedPriority = 2;
     selectedRecurrence.value = RecurrenceType.none;
     reminderEnabled.value = false;
     selectedReminderDate = null;
-    selectedAttachmentType.value = AttachmentType.link;
+    autoExecute.value = false;
+    selectedAutomationMode.value = AutomationMode.execute;
+    triggerBeforeDeadline.value = 10;
     update();
   }
 
@@ -197,15 +207,27 @@ class HomeController extends GetxController {
     taskDescController.text = task.description;
     taskCategoryController.text = task.category;
     taskNotesController.text = task.notes;
+    automationInstructionController.text = task.automationInstruction;
     draftSubtasks.assignAll(task.subtasks);
-    draftAttachments.assignAll(task.attachments);
 
     selectedDate = task.dueDate;
     selectedPriority = task.priority;
     selectedRecurrence.value = task.recurrence;
     reminderEnabled.value = task.reminderEnabled;
     selectedReminderDate = task.reminderAt;
-    selectedAttachmentType.value = AttachmentType.link;
+    autoExecute.value = task.autoExecute;
+    selectedAutomationMode.value = task.automationMode;
+    triggerBeforeDeadline.value = task.triggerBeforeDeadline;
+    update();
+  }
+
+  Future<void> onAutomationToggleChanged(bool value) async {
+    if (value && !canConfigureAutomation) {
+      Get.toNamed(Routes.SUBSCRIPTION);
+      return;
+    }
+
+    autoExecute.value = value;
     update();
   }
 
@@ -225,32 +247,6 @@ class HomeController extends GetxController {
     update();
   }
 
-  void addDraftAttachment() {
-    final label = attachmentLabelController.text.trim();
-    final url = attachmentUrlController.text.trim();
-    if (url.isEmpty) {
-      return;
-    }
-
-    draftAttachments.add(
-      TaskAttachment(
-        id: _uuid.v4(),
-        label: label.isEmpty ? 'Attachment' : label,
-        url: url,
-        type: selectedAttachmentType.value,
-      ),
-    );
-
-    attachmentLabelController.clear();
-    attachmentUrlController.clear();
-    update();
-  }
-
-  void removeDraftAttachment(String attachmentId) {
-    draftAttachments.removeWhere((item) => item.id == attachmentId);
-    update();
-  }
-
   Future<void> addTask() async {
     if (taskTitleController.text.trim().isEmpty) {
       Get.snackbar('Error', 'Task title cannot be empty');
@@ -259,6 +255,20 @@ class HomeController extends GetxController {
 
     if (selectedDate == null) {
       Get.snackbar('Error', 'Please select a due date');
+      return;
+    }
+
+    if (autoExecute.value && !canConfigureAutomation) {
+      Get.toNamed(Routes.SUBSCRIPTION);
+      return;
+    }
+
+    if (autoExecute.value &&
+        automationInstructionController.text.trim().isEmpty) {
+      Get.snackbar(
+        'Error',
+        'Please describe what the automation agent should do',
+      );
       return;
     }
 
@@ -288,7 +298,14 @@ class HomeController extends GetxController {
         reminderEnabled: reminderEnabled.value,
         reminderAt: selectedReminderDate,
         subtasks: draftSubtasks.toList(),
-        attachments: draftAttachments.toList(),
+        autoExecute: autoExecute.value,
+        automationInstruction: automationInstructionController.text.trim(),
+        automationMode: selectedAutomationMode.value,
+        triggerBeforeDeadline: triggerBeforeDeadline.value,
+        automationStatus:
+            autoExecute.value
+                ? AutomationStatus.enabled
+                : AutomationStatus.disabled,
       );
 
       final saved = await _firestoreService.addTask(userId, task);
@@ -321,6 +338,20 @@ class HomeController extends GetxController {
       return;
     }
 
+    if (autoExecute.value && !canConfigureAutomation) {
+      Get.toNamed(Routes.SUBSCRIPTION);
+      return;
+    }
+
+    if (autoExecute.value &&
+        automationInstructionController.text.trim().isEmpty) {
+      Get.snackbar(
+        'Error',
+        'Please describe what the automation agent should do',
+      );
+      return;
+    }
+
     isLoading.value = true;
     try {
       final userId = _authService.getUserId();
@@ -340,7 +371,15 @@ class HomeController extends GetxController {
         reminderEnabled: reminderEnabled.value,
         reminderAt: selectedReminderDate,
         subtasks: draftSubtasks.toList(),
-        attachments: draftAttachments.toList(),
+        autoExecute: autoExecute.value,
+        automationInstruction: automationInstructionController.text.trim(),
+        automationMode: selectedAutomationMode.value,
+        triggerBeforeDeadline: triggerBeforeDeadline.value,
+        automationStatus:
+            autoExecute.value
+                ? AutomationStatus.enabled
+                : AutomationStatus.disabled,
+        automationLastExecutedAt: null,
       );
 
       await _firestoreService.updateTask(userId, updated);
