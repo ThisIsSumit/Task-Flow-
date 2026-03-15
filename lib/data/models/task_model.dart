@@ -6,7 +6,7 @@ enum AutomationMode { suggest, execute }
 
 enum AutomationStatus { enabled, disabled }
 
-enum AutomationExecutionType { email, report, message, notification }
+enum AutomationExecutionType { email, report, message, meeting }
 
 const Object _taskNoChange = Object();
 
@@ -263,7 +263,10 @@ class Task {
               .toList(),
       autoExecute: map['autoExecute'] ?? false,
       executionType: AutomationExecutionType.values.firstWhere(
-        (value) => value.name == map['executionType'],
+        (value) =>
+            value.name == map['executionType'] ||
+            (map['executionType'] == 'notification' &&
+                value == AutomationExecutionType.meeting),
         orElse: () => AutomationExecutionType.email,
       ),
       recipient: (map['recipient'] ?? '').toString(),

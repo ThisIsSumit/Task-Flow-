@@ -3,11 +3,14 @@ const logger = require('firebase-functions/logger');
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 require('dotenv').config();
 
+const { generateTasksWithAI } = require('./copilot');
 const { executeAutomationAction } = require('./executors');
 
 admin.initializeApp();
 
 const db = admin.firestore();
+
+exports.generateTasksWithAI = generateTasksWithAI;
 
 exports.runTaskAutomation = onSchedule(
   {
@@ -62,6 +65,13 @@ async function processTask(taskDoc, now) {
   }
 
   const user = userSnapshot.data();
+  if (!isPremiumUserActive(user, now)) {
+    logger.info('Skipping automation for non-premium user', {
+      taskId: task.id,
+      userId: task.userId,
+    });
+    return;
+  }
 
   try {
     const result = await executeAutomationAction(task, user);
@@ -135,12 +145,40 @@ async function disableAutomation(taskRef) {
 }
 
 async function writeAutomationLog(task, result) {
+  const actionType = result.executionType || task.executionType;
+
   await db.collection('automation_logs').add({
     taskId: task.id,
     userId: task.userId,
-    executionType: task.executionType,
+    actionType,
+    executionType: actionType,
     generatedContent: result.generatedContent || '',
     executionTime: admin.firestore.FieldValue.serverTimestamp(),
     status: result.status,
   });
+}
+
+function isPremiumUserActive(user, now) {
+  if (!user) {
+    return false;
+  }
+
+  const subscriptionType = String(user.subscriptionType || 'free');
+  if (subscriptionType !== 'premium') {
+    return false;
+  }
+
+  const endRaw = user.subscriptionEndDate;
+  if (!endRaw) {
+    return true;
+  }
+
+  const endDate =
+    typeof endRaw.toDate === 'function' ? endRaw.toDate() : new Date(endRaw);
+
+  if (Number.isNaN(endDate.getTime())) {
+    return false;
+  }
+
+  return endDate >= now;
 }

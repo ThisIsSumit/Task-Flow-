@@ -2,8 +2,9 @@ const admin = require('firebase-admin');
 const nodemailer = require('nodemailer');
 const {
   buildEmailTemplate,
+  buildMeetingContent,
+  buildMeetingNotificationPayload,
   buildMessageContent,
-  buildNotificationPayload,
   buildReportContent,
 } = require('./templates');
 
@@ -18,8 +19,9 @@ async function executeAutomationAction(task, user) {
       return executeReportAutomation(task);
     case 'message':
       return executeMessageAutomation(task, user);
+    case 'meeting':
     case 'notification':
-      return executeNotificationAutomation(task, user);
+      return executeMeetingAutomation(task, user);
     default:
       return {
         executionType: task.executionType,
@@ -71,14 +73,19 @@ async function executeMessageAutomation(task, user) {
   };
 }
 
-async function executeNotificationAutomation(task, user) {
-  const payload = buildNotificationPayload(task);
+async function executeMeetingAutomation(task, user) {
+  const generatedContent = await maybeGenerateAiContent(
+    task,
+    'meeting',
+    buildMeetingContent(task),
+  );
+  const payload = buildMeetingNotificationPayload(task);
   const token = resolvePushToken(task, user);
 
   if (!token) {
     return {
-      executionType: 'notification',
-      generatedContent: `${payload.title}: ${payload.body}`,
+      executionType: 'meeting',
+      generatedContent,
     };
   }
 
@@ -87,13 +94,13 @@ async function executeNotificationAutomation(task, user) {
     notification: payload,
     data: {
       taskId: task.id,
-      executionType: 'notification',
+      executionType: 'meeting',
     },
   });
 
   return {
-    executionType: 'notification',
-    generatedContent: `${payload.title}: ${payload.body}`,
+    executionType: 'meeting',
+    generatedContent,
   };
 }
 

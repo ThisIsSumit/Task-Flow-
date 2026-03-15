@@ -8,6 +8,8 @@ import '../data/models/task_model.dart';
 import '../data/services/firestore_service.dart';
 import '../data/services/auth_service.dart';
 import '../data/services/notification_service.dart';
+import '../data/services/subscription_service.dart';
+import '../routes/app_pages.dart';
 
 enum TaskSortOption { dueDate, priority, recent }
 
@@ -18,6 +20,8 @@ class HomeController extends GetxController {
   final AuthService _authService = Get.find<AuthService>();
   final NotificationService _notificationService =
       Get.find<NotificationService>();
+  final SubscriptionService _subscriptionService =
+      Get.find<SubscriptionService>();
   final Uuid _uuid = const Uuid();
   StreamSubscription<List<Task>>? _tasksSubscription;
 
@@ -53,7 +57,7 @@ class HomeController extends GetxController {
   DateTime? selectedReminderDate;
   int selectedPriority = 2;
 
-  bool get canConfigureAutomation => true;
+  bool get canConfigureAutomation => _subscriptionService.isPremium.value;
 
   @override
   void onInit() {
@@ -64,6 +68,12 @@ class HomeController extends GetxController {
   @override
   void onClose() {
     _tasksSubscription?.cancel();
+    taskTitleController.dispose();
+    taskDescController.dispose();
+    taskCategoryController.dispose();
+    taskNotesController.dispose();
+    automationRecipientController.dispose();
+    subtaskController.dispose();
     super.onClose();
   }
 
@@ -80,7 +90,6 @@ class HomeController extends GetxController {
       final fetchedTasks = await _firestoreService.getTasks(userId);
       tasks.assignAll(fetchedTasks);
 
-      await _processRecurringTasks(userId);
       _refreshCategoryList();
       filterTasks();
       await _syncUserStats(userId);
@@ -101,7 +110,8 @@ class HomeController extends GetxController {
             },
           );
     } catch (e) {
-      Get.snackbar('Error', 'Failed to fetch tasks: $e');
+      _logControllerError('fetchTasks', e);
+      Get.snackbar('Error', 'Failed to fetch tasks. Please try again.');
     } finally {
       isLoading.value = false;
     }
@@ -199,6 +209,15 @@ class HomeController extends GetxController {
     filteredTasks.assignAll(result);
   }
 
+  void setQuickFilter(QuickFilter value) {
+    if (quickFilter.value != value) {
+      quickFilter.value = value;
+      quickFilter.refresh();
+    }
+    filterTasks();
+    update();
+  }
+
   void resetTaskForm() {
     taskTitleController.clear();
     taskDescController.clear();
@@ -239,6 +258,17 @@ class HomeController extends GetxController {
   }
 
   Future<void> onAutomationToggleChanged(bool value) async {
+    if (value && !canConfigureAutomation) {
+      autoExecute.value = false;
+      Get.toNamed(Routes.SUBSCRIPTION);
+      Get.snackbar(
+        'Premium Required',
+        'Automation is a premium feature. Upgrade to enable automated task execution.',
+      );
+      update();
+      return;
+    }
+
     autoExecute.value = value;
     update();
   }
@@ -278,6 +308,9 @@ class HomeController extends GetxController {
         return;
       }
 
+      final shouldEnableAutomation =
+          canConfigureAutomation && autoExecute.value;
+
       final task = Task(
         id: '',
         title: taskTitleController.text.trim(),
@@ -296,12 +329,15 @@ class HomeController extends GetxController {
         reminderEnabled: reminderEnabled.value,
         reminderAt: selectedReminderDate,
         subtasks: draftSubtasks.toList(),
-        autoExecute: autoExecute.value,
+        autoExecute: shouldEnableAutomation,
         executionType: selectedExecutionType.value,
-        recipient: automationRecipientController.text.trim(),
+        recipient:
+            shouldEnableAutomation
+                ? automationRecipientController.text.trim()
+                : '',
         triggerBeforeDeadline: triggerBeforeDeadline.value,
         automationStatus:
-            autoExecute.value
+            shouldEnableAutomation
                 ? AutomationStatus.enabled
                 : AutomationStatus.disabled,
       );
@@ -321,10 +357,8 @@ class HomeController extends GetxController {
       resetTaskForm();
       Get.snackbar('Success', 'Task added successfully');
     } catch (e) {
-      Get.log(
-        'Error'
-        'Failed to add task: $e',
-      );
+      _logControllerError('addTask', e);
+      Get.snackbar('Error', 'Failed to add task. Please try again.');
     } finally {
       isLoading.value = false;
     }
@@ -344,6 +378,9 @@ class HomeController extends GetxController {
         return;
       }
 
+      final shouldEnableAutomation =
+          canConfigureAutomation && autoExecute.value;
+
       final updated = existingTask.copyWith(
         title: taskTitleController.text.trim(),
         description: taskDescController.text.trim(),
@@ -355,12 +392,15 @@ class HomeController extends GetxController {
         reminderEnabled: reminderEnabled.value,
         reminderAt: selectedReminderDate,
         subtasks: draftSubtasks.toList(),
-        autoExecute: autoExecute.value,
+        autoExecute: shouldEnableAutomation,
         executionType: selectedExecutionType.value,
-        recipient: automationRecipientController.text.trim(),
+        recipient:
+            shouldEnableAutomation
+                ? automationRecipientController.text.trim()
+                : '',
         triggerBeforeDeadline: triggerBeforeDeadline.value,
         automationStatus:
-            autoExecute.value
+            shouldEnableAutomation
                 ? AutomationStatus.enabled
                 : AutomationStatus.disabled,
       );
@@ -383,7 +423,8 @@ class HomeController extends GetxController {
       Get.back();
       Get.snackbar('Success', 'Task updated successfully');
     } catch (e) {
-      Get.snackbar('Error', 'Failed to update task: $e');
+      _logControllerError('updateTask', e);
+      Get.snackbar('Error', 'Failed to update task. Please try again.');
     } finally {
       isLoading.value = false;
     }
@@ -411,7 +452,8 @@ class HomeController extends GetxController {
       await _syncUserStats(userId);
       Get.snackbar('Success', 'Task deleted successfully');
     } catch (e) {
-      Get.snackbar('Error', 'Failed to delete task: $e');
+      _logControllerError('deleteTask', e);
+      Get.snackbar('Error', 'Failed to delete task. Please try again.');
     } finally {
       isLoading.value = false;
     }
@@ -439,14 +481,11 @@ class HomeController extends GetxController {
         tasks[index] = updated;
       }
 
-      if (updated.isCompleted) {
-        await _createNextRecurringTaskIfNeeded(userId, updated);
-      }
-
       filterTasks();
       await _syncUserStats(userId);
     } catch (e) {
-      Get.snackbar('Error', 'Failed to update task status: $e');
+      _logControllerError('toggleTaskStatus', e);
+      Get.snackbar('Error', 'Failed to update task status. Please try again.');
     } finally {
       isLoading.value = false;
     }
@@ -478,7 +517,8 @@ class HomeController extends GetxController {
       }
       filterTasks();
     } catch (e) {
-      Get.snackbar('Error', 'Failed to update checklist: $e');
+      _logControllerError('toggleSubtask', e);
+      Get.snackbar('Error', 'Failed to update checklist. Please try again.');
     }
   }
 
@@ -504,7 +544,8 @@ class HomeController extends GetxController {
       await _syncUserStats(userId);
       Get.snackbar('Success', 'Task rescheduled');
     } catch (e) {
-      Get.snackbar('Error', 'Failed to reschedule task: $e');
+      _logControllerError('rescheduleTask', e);
+      Get.snackbar('Error', 'Failed to reschedule task. Please try again.');
     }
   }
 
@@ -518,6 +559,15 @@ class HomeController extends GetxController {
     final userId = _authService.getUserId();
     if (userId == null) {
       Get.snackbar('Error', 'User not authenticated');
+      return;
+    }
+
+    if (enabled && !canConfigureAutomation) {
+      Get.toNamed(Routes.SUBSCRIPTION);
+      Get.snackbar(
+        'Premium Required',
+        'Automation is a premium feature. Upgrade to enable automated task execution.',
+      );
       return;
     }
 
@@ -554,73 +604,16 @@ class HomeController extends GetxController {
             : 'Automation disabled for task',
       );
     } catch (e) {
-      Get.snackbar('Error', 'Failed to update automation: $e');
+      _logControllerError('updateTaskAutomation', e);
+      Get.snackbar(
+        'Error',
+        'Failed to update automation settings. Please try again.',
+      );
     }
   }
 
-  Future<void> _processRecurringTasks(String userId) async {
-    for (final task in tasks) {
-      if (task.isCompleted && task.recurrence != RecurrenceType.none) {
-        await _createNextRecurringTaskIfNeeded(userId, task);
-      }
-    }
-  }
-
-  Future<void> _createNextRecurringTaskIfNeeded(
-    String userId,
-    Task source,
-  ) async {
-    if (source.recurrence == RecurrenceType.none || !source.isCompleted) {
-      return;
-    }
-
-    final nextDueDate = _nextDateForRecurrence(
-      source.dueDate,
-      source.recurrence,
-    );
-    final alreadyExists = tasks.any(
-      (task) =>
-          task.title == source.title &&
-          task.category == source.category &&
-          !task.isCompleted &&
-          task.dueDate.year == nextDueDate.year &&
-          task.dueDate.month == nextDueDate.month &&
-          task.dueDate.day == nextDueDate.day,
-    );
-
-    if (alreadyExists) {
-      return;
-    }
-
-    final nextTask = source.copyWith(
-      id: '',
-      isCompleted: false,
-      completedAt: null,
-      dueDate: nextDueDate,
-      createdAt: DateTime.now(),
-      lastRecurrenceAt: DateTime.now(),
-      subtasks:
-          source.subtasks.map((item) => item.copyWith(isDone: false)).toList(),
-    );
-
-    final saved = await _firestoreService.addTask(userId, nextTask);
-    tasks.add(saved);
-  }
-
-  DateTime _nextDateForRecurrence(
-    DateTime fromDate,
-    RecurrenceType recurrenceType,
-  ) {
-    switch (recurrenceType) {
-      case RecurrenceType.daily:
-        return fromDate.add(const Duration(days: 1));
-      case RecurrenceType.weekly:
-        return fromDate.add(const Duration(days: 7));
-      case RecurrenceType.monthly:
-        return DateTime(fromDate.year, fromDate.month + 1, fromDate.day);
-      case RecurrenceType.none:
-        return fromDate;
-    }
+  void _logControllerError(String operation, Object error) {
+    Get.log('HomeController.$operation failed: $error');
   }
 
   String formatDate(DateTime date) => DateFormat('MMM dd, yyyy').format(date);

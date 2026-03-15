@@ -46,7 +46,7 @@ app.*.map.json
 
 
 .env
-.env.example
+!.env.example
 
 ./functions/.env.example
 ./functions/.env

@@ -6,6 +6,8 @@ import 'package:todo_app/data/models/automation_log_model.dart';
 import 'package:todo_app/data/models/task_model.dart';
 import 'package:todo_app/data/services/auth_service.dart';
 import 'package:todo_app/data/services/firestore_service.dart';
+import 'package:todo_app/data/services/subscription_service.dart';
+import 'package:todo_app/routes/app_pages.dart';
 
 class AutomationView extends GetView<HomeController> {
   const AutomationView({super.key});
@@ -13,6 +15,7 @@ class AutomationView extends GetView<HomeController> {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final subscriptionService = Get.find<SubscriptionService>();
 
     return Scaffold(
       appBar: AppBar(title: const Text('Task Automation')),
@@ -75,10 +78,12 @@ class AutomationView extends GetView<HomeController> {
                     Expanded(
                       child: TabBarView(
                         children: [
-                          _TaskAutomationSettings(
-                            tasks: tasks,
-                            controller: ctrl,
-                          ),
+                          subscriptionService.isPremium.value
+                              ? _TaskAutomationSettings(
+                                tasks: tasks,
+                                controller: ctrl,
+                              )
+                              : _PremiumAutomationUpsell(theme: theme),
                           _AutomationHistory(tasks: tasks),
                         ],
                       ),
@@ -202,6 +207,16 @@ class _TaskAutomationCard extends StatelessWidget {
   }
 
   void _showAutomationEditor(BuildContext context) {
+    final subscriptionService = Get.find<SubscriptionService>();
+    if (!subscriptionService.isPremium.value) {
+      Get.toNamed(Routes.SUBSCRIPTION);
+      Get.snackbar(
+        'Premium Required',
+        'Automation is a premium feature. Upgrade to enable automated task execution.',
+      );
+      return;
+    }
+
     Get.bottomSheet(
       _AutomationEditorSheet(task: task, controller: controller),
       isScrollControlled: true,
@@ -216,9 +231,55 @@ class _TaskAutomationCard extends StatelessWidget {
         return 'Generate Report';
       case AutomationExecutionType.message:
         return 'Send Message';
-      case AutomationExecutionType.notification:
-        return 'Create Reminder Notification';
+      case AutomationExecutionType.meeting:
+        return 'Schedule Meeting';
     }
+  }
+}
+
+class _PremiumAutomationUpsell extends StatelessWidget {
+  final ThemeData theme;
+
+  const _PremiumAutomationUpsell({required this.theme});
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.workspace_premium,
+              size: 48,
+              color: theme.colorScheme.primary,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Automation is a premium feature.',
+              style: theme.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w700,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Upgrade to Premium to auto-send emails, generate reports, send messages, and schedule meetings before deadlines.',
+              style: theme.textTheme.bodyMedium,
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 14),
+            ElevatedButton.icon(
+              onPressed: () => Get.toNamed(Routes.SUBSCRIPTION),
+              icon: const Icon(Icons.upgrade),
+              label: const Text('Upgrade to Premium'),
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
 
@@ -307,8 +368,8 @@ class _AutomationEditorSheetState extends State<_AutomationEditorSheet> {
                     child: Text('Send Message'),
                   ),
                   DropdownMenuItem(
-                    value: AutomationExecutionType.notification,
-                    child: Text('Create Reminder Notification'),
+                    value: AutomationExecutionType.meeting,
+                    child: Text('Schedule Meeting'),
                   ),
                 ],
                 onChanged: (value) {
@@ -364,7 +425,7 @@ class _AutomationEditorSheetState extends State<_AutomationEditorSheet> {
                       recipient: _recipientController.text,
                       triggerMinutes: _triggerMinutes,
                     );
-                    if (!mounted) {
+                    if (!context.mounted) {
                       return;
                     }
                     Navigator.of(context).pop();
@@ -467,8 +528,8 @@ class _AutomationHistory extends StatelessWidget {
         return 'Report Generated';
       case 'message':
         return 'Message Sent';
-      case 'notification':
-        return 'Reminder Notification';
+      case 'meeting':
+        return 'Meeting Scheduled';
       default:
         return value;
     }

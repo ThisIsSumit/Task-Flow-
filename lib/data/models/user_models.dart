@@ -4,6 +4,7 @@ enum SubscriptionType { free, premium }
 
 class UserModel {
   final String uid;
+  final String userId;
   final String email;
   final String name;
   final String? phoneNumber;
@@ -16,6 +17,7 @@ class UserModel {
 
   UserModel({
     required this.uid,
+    String? userId,
     required this.email,
     required this.name,
     this.phoneNumber,
@@ -25,7 +27,8 @@ class UserModel {
     this.subscriptionType = SubscriptionType.free,
     this.subscriptionStartDate,
     this.subscriptionEndDate,
-  }) : createdAt = createdAt ?? DateTime.now(),
+  }) : userId = userId ?? uid,
+       createdAt = createdAt ?? DateTime.now(),
        taskStats = taskStats ?? {'completed': 0, 'pending': 0, 'overdue': 0};
 
   bool get isPremiumActive {
@@ -42,6 +45,7 @@ class UserModel {
 
   UserModel copyWith({
     String? uid,
+    String? userId,
     String? email,
     String? name,
     String? phoneNumber,
@@ -54,6 +58,7 @@ class UserModel {
   }) {
     return UserModel(
       uid: uid ?? this.uid,
+      userId: userId ?? this.userId,
       email: email ?? this.email,
       name: name ?? this.name,
       phoneNumber: phoneNumber ?? this.phoneNumber,
@@ -70,6 +75,7 @@ class UserModel {
   Map<String, dynamic> toMap() {
     return {
       'uid': uid,
+      'userId': userId,
       'email': email,
       'name': name,
       'phoneNumber': phoneNumber,
@@ -119,7 +125,8 @@ class UserModel {
     }
 
     return UserModel(
-      uid: map['uid'] ?? '',
+      uid: (map['uid'] ?? map['userId'] ?? '').toString(),
+      userId: (map['userId'] ?? map['uid'] ?? '').toString(),
       email: map['email'] ?? '',
       name: map['name'] ?? '',
       phoneNumber: map['phoneNumber'],

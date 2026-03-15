@@ -43,6 +43,7 @@ class AutomationLog {
     return {
       'taskId': taskId,
       'userId': userId,
+      'actionType': executionType,
       'executionType': executionType,
       'generatedContent': generatedContent,
       'executionTime': Timestamp.fromDate(executionTime),

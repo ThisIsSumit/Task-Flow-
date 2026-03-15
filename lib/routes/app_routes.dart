@@ -9,4 +9,6 @@ abstract class Routes {
   static const ANALYTICS = '/analytics';
   static const SUBSCRIPTION = '/subscription';
   static const AUTOMATION = '/automation';
+  static const COPILOT_INPUT = '/copilot-input';
+  static const COPILOT_PREVIEW = '/copilot-preview';
 }

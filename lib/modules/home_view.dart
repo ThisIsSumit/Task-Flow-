@@ -33,10 +33,10 @@ class HomeView extends GetView<HomeController> {
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
           FloatingActionButton.extended(
-            heroTag: 'automation_fab',
-            onPressed: () => Get.toNamed(Routes.AUTOMATION),
-            icon: const Icon(Icons.auto_awesome),
-            label: const Text('Automation'),
+            heroTag: 'copilot_fab',
+            onPressed: () => Get.toNamed(Routes.COPILOT_INPUT),
+            icon: const Icon(Icons.smart_toy_outlined),
+            label: const Text('AI Copilot'),
           ),
           const SizedBox(height: 10),
           FloatingActionButton(
@@ -128,8 +128,9 @@ class HomeView extends GetView<HomeController> {
             ),
           ),
           const SizedBox(height: 10),
-          Obx(
-            () => Column(
+          Obx(() {
+            final activeFilter = controller.quickFilter.value;
+            return Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Wrap(
@@ -137,29 +138,38 @@ class HomeView extends GetView<HomeController> {
                   runSpacing: 8,
                   children: [
                     ChoiceChip(
+                      key: ValueKey('quick_filter_${activeFilter.name}_all'),
                       label: const Text('All'),
-                      selected: controller.quickFilter.value == QuickFilter.all,
-                      onSelected: (_) {
-                        controller.quickFilter.value = QuickFilter.all;
-                        controller.filterTasks();
+                      selected: activeFilter == QuickFilter.all,
+                      onSelected: (selected) {
+                        if (!selected) {
+                          return;
+                        }
+                        controller.setQuickFilter(QuickFilter.all);
                       },
                     ),
                     ChoiceChip(
+                      key: ValueKey('quick_filter_${activeFilter.name}_today'),
                       label: const Text('Today'),
-                      selected:
-                          controller.quickFilter.value == QuickFilter.today,
-                      onSelected: (_) {
-                        controller.quickFilter.value = QuickFilter.today;
-                        controller.filterTasks();
+                      selected: activeFilter == QuickFilter.today,
+                      onSelected: (selected) {
+                        if (!selected) {
+                          return;
+                        }
+                        controller.setQuickFilter(QuickFilter.today);
                       },
                     ),
                     ChoiceChip(
+                      key: ValueKey(
+                        'quick_filter_${activeFilter.name}_this_week',
+                      ),
                       label: const Text('This Week'),
-                      selected:
-                          controller.quickFilter.value == QuickFilter.thisWeek,
-                      onSelected: (_) {
-                        controller.quickFilter.value = QuickFilter.thisWeek;
-                        controller.filterTasks();
+                      selected: activeFilter == QuickFilter.thisWeek,
+                      onSelected: (selected) {
+                        if (!selected) {
+                          return;
+                        }
+                        controller.setQuickFilter(QuickFilter.thisWeek);
                       },
                     ),
                   ],
@@ -178,8 +188,8 @@ class HomeView extends GetView<HomeController> {
                   ],
                 ),
               ],
-            ),
-          ),
+            );
+          }),
         ],
       ),
     );
@@ -261,17 +271,6 @@ class HomeView extends GetView<HomeController> {
                   '${task.category} • ${controller.formatDate(task.dueDate)}',
                   style: TextStyle(color: isOverdue ? Colors.red : null),
                 ),
-                if (task.autoExecute) ...[
-                  const SizedBox(height: 4),
-                  const Text(
-                    'Automation Enabled',
-                    style: TextStyle(fontWeight: FontWeight.w600),
-                  ),
-                  Text(
-                    'Action: ${_executionTypeLabel(task.executionType)}',
-                    style: const TextStyle(fontSize: 12),
-                  ),
-                ],
                 const SizedBox(height: 4),
                 Row(
                   children: [
@@ -338,50 +337,6 @@ class HomeView extends GetView<HomeController> {
               if (task.notes.isNotEmpty) ...[
                 const SizedBox(height: 10),
                 Text('Notes: ${task.notes}'),
-              ],
-              if (task.autoExecute ||
-                  task.automationInstruction.isNotEmpty ||
-                  task.generatedAutomationSummary.isNotEmpty ||
-                  task.generatedAutomationContent.isNotEmpty ||
-                  task.automationLastExecutedAt != null) ...[
-                const SizedBox(height: 10),
-                const Text(
-                  'Automation',
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-                Text('Action: ${_executionTypeLabel(task.executionType)}'),
-                Text('Mode: ${_automationModeLabel(task.automationMode)}'),
-                Text('Status: ${task.autoExecute ? 'Enabled' : 'Disabled'}'),
-                if (task.recipient.trim().isNotEmpty)
-                  Text('Recipient: ${task.recipient.trim()}'),
-                Text(
-                  task.automationInstruction.isEmpty
-                      ? 'Instruction: (none)'
-                      : 'Instruction: ${task.automationInstruction}',
-                ),
-                Text(
-                  'Trigger: ${task.triggerBeforeDeadline} minutes before deadline',
-                ),
-                if (task.automationLastExecutedAt != null)
-                  Text(
-                    'Last executed: ${controller.formatDate(task.automationLastExecutedAt!)}',
-                  ),
-                if (task.generatedAutomationSummary.isNotEmpty ||
-                    task.generatedAutomationContent.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Last Agent Output',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  if (task.generatedAutomationSummary.isNotEmpty)
-                    Text('Summary: ${task.generatedAutomationSummary}'),
-                  if (task.generatedAutomationContent.isNotEmpty)
-                    Text(
-                      task.generatedAutomationContent,
-                      maxLines: 6,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                ],
               ],
               if (task.subtasks.isNotEmpty) ...[
                 const SizedBox(height: 14),
@@ -587,94 +542,7 @@ class HomeView extends GetView<HomeController> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
-                    Align(
-                      alignment: Alignment.centerLeft,
-                      child: Text(
-                        'Section 2 — Automation Settings',
-                        style: Theme.of(context).textTheme.titleMedium
-                            ?.copyWith(fontWeight: FontWeight.bold),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    SwitchListTile(
-                      contentPadding: EdgeInsets.zero,
-                      title: const Text('Enable Automation'),
-                      value: ctrl.autoExecute.value,
-                      onChanged:
-                          (value) => ctrl.onAutomationToggleChanged(value),
-                    ),
-                    if (ctrl.autoExecute.value) ...[
-                      const SizedBox(height: 8),
-                      DropdownButtonFormField<AutomationExecutionType>(
-                        initialValue: ctrl.selectedExecutionType.value,
-                        items: const [
-                          DropdownMenuItem(
-                            value: AutomationExecutionType.email,
-                            child: Text('Send Email'),
-                          ),
-                          DropdownMenuItem(
-                            value: AutomationExecutionType.report,
-                            child: Text('Generate Report'),
-                          ),
-                          DropdownMenuItem(
-                            value: AutomationExecutionType.message,
-                            child: Text('Send Message'),
-                          ),
-                          DropdownMenuItem(
-                            value: AutomationExecutionType.notification,
-                            child: Text('Create Reminder Notification'),
-                          ),
-                        ],
-                        onChanged: (value) {
-                          if (value == null) {
-                            return;
-                          }
-                          ctrl.selectedExecutionType.value = value;
-                          ctrl.update();
-                        },
-                        decoration: const InputDecoration(
-                          labelText: 'Automation Action',
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      DropdownButtonFormField<int>(
-                        initialValue: ctrl.triggerBeforeDeadline.value,
-                        items: const [
-                          DropdownMenuItem(
-                            value: 5,
-                            child: Text('5 minutes before deadline'),
-                          ),
-                          DropdownMenuItem(
-                            value: 10,
-                            child: Text('10 minutes before deadline'),
-                          ),
-                          DropdownMenuItem(
-                            value: 30,
-                            child: Text('30 minutes before deadline'),
-                          ),
-                        ],
-                        onChanged: (value) {
-                          if (value == null) {
-                            return;
-                          }
-                          ctrl.triggerBeforeDeadline.value = value;
-                          ctrl.update();
-                        },
-                        decoration: const InputDecoration(
-                          labelText: 'Trigger Time',
-                        ),
-                      ),
-                      const SizedBox(height: 10),
-                      TextField(
-                        controller: ctrl.automationRecipientController,
-                        keyboardType: TextInputType.emailAddress,
-                        decoration: const InputDecoration(
-                          labelText: 'Recipient (optional)',
-                          hintText: 'Email address or contact',
-                        ),
-                      ),
-                    ],
+                    const SizedBox(height: 10),
                     const SizedBox(height: 10),
                     Row(
                       children: [
@@ -811,26 +679,72 @@ class HomeView extends GetView<HomeController> {
       isScrollControlled: true,
     );
   }
+}
 
-  String _automationModeLabel(AutomationMode mode) {
-    switch (mode) {
-      case AutomationMode.execute:
-        return 'Execute and complete task';
-      case AutomationMode.suggest:
-        return 'Suggest only (review first)';
-    }
+class _CopilotQuickBox extends StatefulWidget {
+  const _CopilotQuickBox();
+
+  @override
+  State<_CopilotQuickBox> createState() => _CopilotQuickBoxState();
+}
+
+class _CopilotQuickBoxState extends State<_CopilotQuickBox> {
+  final TextEditingController _controller = TextEditingController();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
   }
 
-  String _executionTypeLabel(AutomationExecutionType type) {
-    switch (type) {
-      case AutomationExecutionType.email:
-        return 'Send Email';
-      case AutomationExecutionType.report:
-        return 'Generate Report';
-      case AutomationExecutionType.message:
-        return 'Send Message';
-      case AutomationExecutionType.notification:
-        return 'Create Reminder Notification';
-    }
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+      child: Card(
+        child: Padding(
+          padding: const EdgeInsets.all(12),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                children: [
+                  Icon(Icons.smart_toy_outlined),
+                  SizedBox(width: 8),
+                  Text(
+                    'AI Copilot',
+                    style: TextStyle(fontWeight: FontWeight.w700),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: _controller,
+                minLines: 2,
+                maxLines: 3,
+                decoration: const InputDecoration(
+                  hintText: 'Describe your task or goal...',
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerRight,
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Get.toNamed(
+                      Routes.COPILOT_INPUT,
+                      arguments: {'prefill': _controller.text.trim()},
+                    );
+                  },
+                  icon: const Icon(Icons.auto_awesome),
+                  label: const Text('Generate Plan'),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

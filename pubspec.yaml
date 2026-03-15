@@ -33,6 +33,7 @@ dependencies:
   get: 
   firebase_core: 
   cloud_firestore: 
+  cloud_functions: 
   firebase_auth: 
   fl_chart: 
   intl: 
