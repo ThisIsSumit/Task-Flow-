@@ -23,7 +23,7 @@ exports.runTaskAutomation = onSchedule(
     const tasksSnapshot = await db
       .collectionGroup('tasks')
       .where('autoExecute', '==', true)
-      .where('automationStatus', '==', 'enabled')
+      .where('status', '==', 'pending')
       .get();
 
     for (const taskDoc of tasksSnapshot.docs) {
@@ -38,13 +38,14 @@ async function processTask(taskDoc, now) {
     return;
   }
 
-  if (task.isCompleted || task.status == 'completed') {
+  if (task.isCompleted || task.status === 'completed') {
     return;
   }
 
   const triggerAt = new Date(
     task.dueDate.getTime() - task.triggerBeforeDeadline * 60 * 1000,
   );
+
   if (now < triggerAt) {
     return;
   }
@@ -52,32 +53,35 @@ async function processTask(taskDoc, now) {
   const userRef = db.collection('users').doc(task.userId);
   const userSnapshot = await userRef.get();
   if (!userSnapshot.exists) {
-    await writeAutomationLog(task, 'failed', 'User record not found');
+    await writeAutomationLog(task, {
+      status: 'failed',
+      generatedContent: 'User record not found',
+    });
     await disableAutomation(taskDoc.ref);
     return;
   }
 
   const user = userSnapshot.data();
-  if (!isPremiumActive(user, now)) {
-    logger.info('Skipping non-premium task automation', { taskId: task.id });
-    return;
-  }
 
   try {
     const result = await executeAutomationAction(task, user);
+
     await completeTaskAutomation(taskDoc.ref, result);
-    await writeAutomationLog(task, 'success', result);
+    await writeAutomationLog(task, {
+      status: 'success',
+      generatedContent: result.generatedContent,
+    });
   } catch (error) {
     logger.error('Task automation failed', {
       taskId: task.id,
       error: error instanceof Error ? error.message : String(error),
     });
+
     await disableAutomation(taskDoc.ref);
-    await writeAutomationLog(task, 'failed', {
-      actionType: 'error',
-      generatedContent: error.message || String(error),
-      summary: 'Automation execution failed.',
-      shouldMarkComplete: false,
+    await writeAutomationLog(task, {
+      status: 'failed',
+      generatedContent:
+        error instanceof Error ? error.message : String(error),
     });
   }
 }
@@ -88,54 +92,35 @@ function normalizeTask(taskDoc) {
   return {
     id: taskDoc.id,
     userId: data.userId,
-    title: data.title || '',
-    description: data.description || '',
-    notes: data.notes || '',
-    isCompleted: Boolean(data.isCompleted),
-    status: data.status || 'pending',
+    title: String(data.title || ''),
+    description: String(data.description || ''),
     dueDate:
       data.dueDate && typeof data.dueDate.toDate === 'function'
         ? data.dueDate.toDate()
         : null,
-    triggerBeforeDeadline: Number(data.triggerBeforeDeadline || 0),
-    automationInstruction: String(data.automationInstruction || ''),
-    automationMode: data.automationMode === 'suggest' ? 'suggest' : 'execute',
+    isCompleted: Boolean(data.isCompleted),
+    status: String(data.status || 'pending'),
+    autoExecute: Boolean(data.autoExecute),
+    executionType: String(data.executionType || 'email'),
+    triggerBeforeDeadline: Number(data.triggerBeforeDeadline || 10),
+    recipient: String(data.recipient || ''),
   };
-}
-
-function isPremiumActive(user, now) {
-  if (user?.subscriptionType !== 'premium') {
-    return false;
-  }
-
-  if (!user?.subscriptionEndDate) {
-    return true;
-  }
-
-  const endDate =
-    typeof user.subscriptionEndDate?.toDate === 'function'
-      ? user.subscriptionEndDate.toDate()
-      : new Date(user.subscriptionEndDate);
-
-  return endDate > now;
 }
 
 async function completeTaskAutomation(taskRef, result) {
-  const update = {
-    autoExecute: false,
-    automationStatus: 'disabled',
-    automationLastExecutedAt: admin.firestore.FieldValue.serverTimestamp(),
-    generatedAutomationContent: result.generatedContent,
-    generatedAutomationSummary: result.summary,
-  };
-
-  if (result.shouldMarkComplete) {
-    update.isCompleted = true;
-    update.status = 'completed';
-    update.completedAt = admin.firestore.FieldValue.serverTimestamp();
-  }
-
-  await taskRef.set(update, { merge: true });
+  await taskRef.set(
+    {
+      autoExecute: false,
+      automationStatus: 'disabled',
+      automationLastExecutedAt: admin.firestore.FieldValue.serverTimestamp(),
+      generatedAutomationContent: result.generatedContent || '',
+      generatedAutomationSummary: `${result.executionType || 'automation'} executed`,
+      status: 'completed',
+      isCompleted: true,
+      completedAt: admin.firestore.FieldValue.serverTimestamp(),
+    },
+    { merge: true },
+  );
 }
 
 async function disableAutomation(taskRef) {
@@ -149,15 +134,13 @@ async function disableAutomation(taskRef) {
   );
 }
 
-async function writeAutomationLog(task, status, result) {
+async function writeAutomationLog(task, result) {
   await db.collection('automation_logs').add({
     taskId: task.id,
     userId: task.userId,
-    actionType: result.actionType || 'note',
+    executionType: task.executionType,
     generatedContent: result.generatedContent || '',
-    summary: result.summary || '',
-    mode: task.automationMode || 'execute',
     executionTime: admin.firestore.FieldValue.serverTimestamp(),
-    status,
+    status: result.status,
   });
 }

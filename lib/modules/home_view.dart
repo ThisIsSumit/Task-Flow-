@@ -36,7 +36,7 @@ class HomeView extends GetView<HomeController> {
             heroTag: 'automation_fab',
             onPressed: () => Get.toNamed(Routes.AUTOMATION),
             icon: const Icon(Icons.auto_awesome),
-            label: const Text('Agent'),
+            label: const Text('Automation'),
           ),
           const SizedBox(height: 10),
           FloatingActionButton(
@@ -261,6 +261,17 @@ class HomeView extends GetView<HomeController> {
                   '${task.category} • ${controller.formatDate(task.dueDate)}',
                   style: TextStyle(color: isOverdue ? Colors.red : null),
                 ),
+                if (task.autoExecute) ...[
+                  const SizedBox(height: 4),
+                  const Text(
+                    'Automation Enabled',
+                    style: TextStyle(fontWeight: FontWeight.w600),
+                  ),
+                  Text(
+                    'Action: ${_executionTypeLabel(task.executionType)}',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                ],
                 const SizedBox(height: 4),
                 Row(
                   children: [
@@ -338,8 +349,11 @@ class HomeView extends GetView<HomeController> {
                   'Automation',
                   style: TextStyle(fontWeight: FontWeight.bold),
                 ),
+                Text('Action: ${_executionTypeLabel(task.executionType)}'),
                 Text('Mode: ${_automationModeLabel(task.automationMode)}'),
                 Text('Status: ${task.autoExecute ? 'Enabled' : 'Disabled'}'),
+                if (task.recipient.trim().isNotEmpty)
+                  Text('Recipient: ${task.recipient.trim()}'),
                 Text(
                   task.automationInstruction.isEmpty
                       ? 'Instruction: (none)'
@@ -443,6 +457,15 @@ class HomeView extends GetView<HomeController> {
                       ),
                     ),
                     const SizedBox(height: 12),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Section 1 — Task Details',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
                     TextField(
                       controller: ctrl.taskTitleController,
                       decoration: const InputDecoration(labelText: 'Title*'),
@@ -523,7 +546,7 @@ class HomeView extends GetView<HomeController> {
                             label: Text(
                               ctrl.selectedDate == null
                                   ? 'Pick Due Date'
-                                  : ctrl.formatDate(ctrl.selectedDate!),
+                                  : '${ctrl.formatDate(ctrl.selectedDate!)} ${TimeOfDay.fromDateTime(ctrl.selectedDate!).format(context)}',
                             ),
                             onPressed: () async {
                               final selected = await showDatePicker(
@@ -538,7 +561,25 @@ class HomeView extends GetView<HomeController> {
                                 ),
                               );
                               if (selected != null) {
-                                ctrl.selectedDate = selected;
+                                if (!context.mounted) {
+                                  return;
+                                }
+                                final selectedTime = await showTimePicker(
+                                  context: context,
+                                  initialTime: TimeOfDay.fromDateTime(
+                                    ctrl.selectedDate ?? DateTime.now(),
+                                  ),
+                                );
+                                if (selectedTime == null) {
+                                  return;
+                                }
+                                ctrl.selectedDate = DateTime(
+                                  selected.year,
+                                  selected.month,
+                                  selected.day,
+                                  selectedTime.hour,
+                                  selectedTime.minute,
+                                );
                                 ctrl.update();
                               }
                             },
@@ -546,6 +587,94 @@ class HomeView extends GetView<HomeController> {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 16),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'Section 2 — Automation Settings',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    SwitchListTile(
+                      contentPadding: EdgeInsets.zero,
+                      title: const Text('Enable Automation'),
+                      value: ctrl.autoExecute.value,
+                      onChanged:
+                          (value) => ctrl.onAutomationToggleChanged(value),
+                    ),
+                    if (ctrl.autoExecute.value) ...[
+                      const SizedBox(height: 8),
+                      DropdownButtonFormField<AutomationExecutionType>(
+                        initialValue: ctrl.selectedExecutionType.value,
+                        items: const [
+                          DropdownMenuItem(
+                            value: AutomationExecutionType.email,
+                            child: Text('Send Email'),
+                          ),
+                          DropdownMenuItem(
+                            value: AutomationExecutionType.report,
+                            child: Text('Generate Report'),
+                          ),
+                          DropdownMenuItem(
+                            value: AutomationExecutionType.message,
+                            child: Text('Send Message'),
+                          ),
+                          DropdownMenuItem(
+                            value: AutomationExecutionType.notification,
+                            child: Text('Create Reminder Notification'),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          if (value == null) {
+                            return;
+                          }
+                          ctrl.selectedExecutionType.value = value;
+                          ctrl.update();
+                        },
+                        decoration: const InputDecoration(
+                          labelText: 'Automation Action',
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      DropdownButtonFormField<int>(
+                        initialValue: ctrl.triggerBeforeDeadline.value,
+                        items: const [
+                          DropdownMenuItem(
+                            value: 5,
+                            child: Text('5 minutes before deadline'),
+                          ),
+                          DropdownMenuItem(
+                            value: 10,
+                            child: Text('10 minutes before deadline'),
+                          ),
+                          DropdownMenuItem(
+                            value: 30,
+                            child: Text('30 minutes before deadline'),
+                          ),
+                        ],
+                        onChanged: (value) {
+                          if (value == null) {
+                            return;
+                          }
+                          ctrl.triggerBeforeDeadline.value = value;
+                          ctrl.update();
+                        },
+                        decoration: const InputDecoration(
+                          labelText: 'Trigger Time',
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+                      TextField(
+                        controller: ctrl.automationRecipientController,
+                        keyboardType: TextInputType.emailAddress,
+                        decoration: const InputDecoration(
+                          labelText: 'Recipient (optional)',
+                          hintText: 'Email address or contact',
+                        ),
+                      ),
+                    ],
                     const SizedBox(height: 10),
                     Row(
                       children: [
@@ -689,6 +818,19 @@ class HomeView extends GetView<HomeController> {
         return 'Execute and complete task';
       case AutomationMode.suggest:
         return 'Suggest only (review first)';
+    }
+  }
+
+  String _executionTypeLabel(AutomationExecutionType type) {
+    switch (type) {
+      case AutomationExecutionType.email:
+        return 'Send Email';
+      case AutomationExecutionType.report:
+        return 'Generate Report';
+      case AutomationExecutionType.message:
+        return 'Send Message';
+      case AutomationExecutionType.notification:
+        return 'Create Reminder Notification';
     }
   }
 }

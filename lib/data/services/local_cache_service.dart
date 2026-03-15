@@ -48,6 +48,8 @@ class LocalCacheService extends GetxService {
       'recurrence': task.recurrence.name,
       'lastRecurrenceAt': task.lastRecurrenceAt?.toIso8601String(),
       'autoExecute': task.autoExecute,
+      'executionType': task.executionType.name,
+      'recipient': task.recipient,
       'automationInstruction': task.automationInstruction,
       'automationMode': task.automationMode.name,
       'triggerBeforeDeadline': task.triggerBeforeDeadline,

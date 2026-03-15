@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:intl/intl.dart';
 import 'package:todo_app/controllers/home_controller.dart';
+import 'package:todo_app/data/models/automation_log_model.dart';
 import 'package:todo_app/data/models/task_model.dart';
-import 'package:todo_app/routes/app_pages.dart';
+import 'package:todo_app/data/services/auth_service.dart';
+import 'package:todo_app/data/services/firestore_service.dart';
 
 class AutomationView extends GetView<HomeController> {
   const AutomationView({super.key});
@@ -12,14 +15,11 @@ class AutomationView extends GetView<HomeController> {
     final theme = Theme.of(context);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Agent Automation')),
+      appBar: AppBar(title: const Text('Task Automation')),
       body: Obx(() {
-        // Read controller once here; pass it down so child cards
-        // never need an independent Get.find call (avoids null-check
-        // crash when SmartManagement disposes the controller during
-        // navigation).
         final ctrl = controller;
         final tasks = ctrl.tasks.toList();
+        final automatedTasks = tasks.where((task) => task.autoExecute).toList();
 
         return Column(
           children: [
@@ -31,7 +31,7 @@ class AutomationView extends GetView<HomeController> {
                 gradient: LinearGradient(
                   colors: [
                     theme.colorScheme.primaryContainer,
-                    theme.colorScheme.secondaryContainer,
+                    theme.colorScheme.tertiaryContainer,
                   ],
                 ),
                 borderRadius: BorderRadius.circular(16),
@@ -40,61 +40,52 @@ class AutomationView extends GetView<HomeController> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Automation Control Center',
+                    'Smart Task Assistant',
                     style: theme.textTheme.titleLarge?.copyWith(
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                   const SizedBox(height: 6),
                   Text(
-                    'Pick a task and configure how the agent should run before its deadline.',
+                    'Configure optional automation for any pending task and track each execution result.',
                     style: theme.textTheme.bodyMedium,
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Automation enabled on ${automatedTasks.length} task(s)',
+                    style: theme.textTheme.labelLarge,
                   ),
                 ],
               ),
             ),
-            if (!ctrl.canConfigureAutomation)
-              Container(
-                width: double.infinity,
-                margin: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: theme.colorScheme.surfaceContainerHighest,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Row(
+            Expanded(
+              child: DefaultTabController(
+                length: 2,
+                child: Column(
                   children: [
-                    const Icon(Icons.workspace_premium),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        'Automation is a premium feature. Upgrade to enable agent execution.',
-                        style: theme.textTheme.bodyMedium,
+                    const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 16),
+                      child: TabBar(
+                        tabs: [
+                          Tab(text: 'Task Settings'),
+                          Tab(text: 'History'),
+                        ],
                       ),
                     ),
-                    TextButton(
-                      onPressed: () => Get.toNamed(Routes.SUBSCRIPTION),
-                      child: const Text('Upgrade'),
+                    Expanded(
+                      child: TabBarView(
+                        children: [
+                          _TaskAutomationSettings(
+                            tasks: tasks,
+                            controller: ctrl,
+                          ),
+                          _AutomationHistory(tasks: tasks),
+                        ],
+                      ),
                     ),
                   ],
                 ),
               ),
-            Expanded(
-              child:
-                  tasks.isEmpty
-                      ? const Center(
-                        child: Text('No tasks yet. Add one first!'),
-                      )
-                      : ListView.builder(
-                        padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-                        itemCount: tasks.length,
-                        itemBuilder: (context, index) {
-                          return _TaskAutomationCard(
-                            task: tasks[index],
-                            controller: ctrl,
-                          );
-                        },
-                      ),
             ),
           ],
         );
@@ -103,11 +94,31 @@ class AutomationView extends GetView<HomeController> {
   }
 }
 
-/// Card for a single task's automation settings.
-///
-/// Receives [controller] from the parent [AutomationView] instead of using
-/// GetView so there is one single Get.find call per screen (preventing null
-/// check crashes when GetX smart management interacts with navigation).
+class _TaskAutomationSettings extends StatelessWidget {
+  final List<Task> tasks;
+  final HomeController controller;
+
+  const _TaskAutomationSettings({
+    required this.tasks,
+    required this.controller,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (tasks.isEmpty) {
+      return const Center(child: Text('No tasks yet. Create a task first.'));
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+      itemCount: tasks.length,
+      itemBuilder: (context, index) {
+        return _TaskAutomationCard(task: tasks[index], controller: controller);
+      },
+    );
+  }
+}
+
 class _TaskAutomationCard extends StatelessWidget {
   final Task task;
   final HomeController controller;
@@ -148,7 +159,7 @@ class _TaskAutomationCard extends StatelessWidget {
                             : theme.colorScheme.surfaceContainerHighest,
                   ),
                   child: Text(
-                    task.autoExecute ? 'Enabled' : 'Disabled',
+                    task.autoExecute ? 'Automation Enabled' : 'Automation Off',
                     style: theme.textTheme.labelSmall,
                   ),
                 ),
@@ -156,54 +167,33 @@ class _TaskAutomationCard extends StatelessWidget {
             ),
             const SizedBox(height: 6),
             Text(
-              'Due: ${controller.formatDate(task.dueDate)}',
+              'Deadline: ${DateFormat('MMM dd, yyyy hh:mm a').format(task.dueDate)}',
               style: theme.textTheme.bodySmall,
             ),
-            if (task.automationInstruction.isNotEmpty) ...[
-              const SizedBox(height: 8),
-              Text(
-                'Agent goal: ${task.automationInstruction}',
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ],
-            if (task.generatedAutomationSummary.isNotEmpty) ...[
+            if (task.autoExecute) ...[
               const SizedBox(height: 6),
               Text(
-                'Last output: ${task.generatedAutomationSummary}',
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+                'Action: ${_executionTypeLabel(task.executionType)}',
                 style: theme.textTheme.bodySmall,
               ),
+              Text(
+                'Trigger: ${task.triggerBeforeDeadline} minutes before deadline',
+                style: theme.textTheme.bodySmall,
+              ),
+              if (task.recipient.trim().isNotEmpty)
+                Text(
+                  'Recipient: ${task.recipient}',
+                  style: theme.textTheme.bodySmall,
+                ),
             ],
             const SizedBox(height: 10),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton.icon(
-                    icon: const Icon(Icons.tune),
-                    onPressed: () => _showAutomationEditor(context, task),
-                    label: const Text('Configure Agent'),
-                  ),
-                ),
-                const SizedBox(width: 8),
-                Switch(
-                  value: task.autoExecute,
-                  onChanged: (value) {
-                    if (!controller.canConfigureAutomation && value) {
-                      Get.toNamed(Routes.SUBSCRIPTION);
-                      return;
-                    }
-                    controller.updateTaskAutomation(
-                      task,
-                      enabled: value,
-                      instruction: task.automationInstruction,
-                      mode: task.automationMode,
-                      triggerMinutes: task.triggerBeforeDeadline,
-                    );
-                  },
-                ),
-              ],
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () => _showAutomationEditor(context),
+                icon: const Icon(Icons.tune),
+                label: const Text('Configure Automation'),
+              ),
             ),
           ],
         ),
@@ -211,21 +201,27 @@ class _TaskAutomationCard extends StatelessWidget {
     );
   }
 
-  void _showAutomationEditor(BuildContext context, Task task) {
+  void _showAutomationEditor(BuildContext context) {
     Get.bottomSheet(
       _AutomationEditorSheet(task: task, controller: controller),
       isScrollControlled: true,
     );
   }
+
+  String _executionTypeLabel(AutomationExecutionType type) {
+    switch (type) {
+      case AutomationExecutionType.email:
+        return 'Send Email';
+      case AutomationExecutionType.report:
+        return 'Generate Report';
+      case AutomationExecutionType.message:
+        return 'Send Message';
+      case AutomationExecutionType.notification:
+        return 'Create Reminder Notification';
+    }
+  }
 }
 
-/// Bottom-sheet content for configuring a task's automation.
-///
-/// Uses [StatefulWidget] so [TextEditingController] and local form state are
-/// properly tied to the widget lifecycle (created in [initState], disposed in
-/// [dispose]). This eliminates the race condition where an [Obx]-based sheet
-/// could receive a reactive rebuild after the controller had already been
-/// disposed by the outer async caller.
 class _AutomationEditorSheet extends StatefulWidget {
   final Task task;
   final HomeController controller;
@@ -237,25 +233,23 @@ class _AutomationEditorSheet extends StatefulWidget {
 }
 
 class _AutomationEditorSheetState extends State<_AutomationEditorSheet> {
-  late final TextEditingController _instructionController;
-  late AutomationMode _mode;
-  late int _triggerMinutes;
+  late final TextEditingController _recipientController;
   late bool _enabled;
+  late int _triggerMinutes;
+  late AutomationExecutionType _executionType;
 
   @override
   void initState() {
     super.initState();
-    _instructionController = TextEditingController(
-      text: widget.task.automationInstruction,
-    );
-    _mode = widget.task.automationMode;
-    _triggerMinutes = widget.task.triggerBeforeDeadline;
     _enabled = widget.task.autoExecute;
+    _triggerMinutes = widget.task.triggerBeforeDeadline;
+    _executionType = widget.task.executionType;
+    _recipientController = TextEditingController(text: widget.task.recipient);
   }
 
   @override
   void dispose() {
-    _instructionController.dispose();
+    _recipientController.dispose();
     super.dispose();
   }
 
@@ -289,64 +283,72 @@ class _AutomationEditorSheetState extends State<_AutomationEditorSheet> {
               const SizedBox(height: 12),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
-                title: const Text('Enable automation'),
+                title: const Text('Enable Automation'),
                 value: _enabled,
-                onChanged: (value) {
-                  if (!widget.controller.canConfigureAutomation && value) {
-                    Get.toNamed(Routes.SUBSCRIPTION);
-                    return;
-                  }
-                  setState(() => _enabled = value);
-                },
+                onChanged: (value) => setState(() => _enabled = value),
               ),
               const SizedBox(height: 8),
-              TextField(
-                controller: _instructionController,
-                minLines: 2,
-                maxLines: 4,
+              DropdownButtonFormField<AutomationExecutionType>(
+                initialValue: _executionType,
                 decoration: const InputDecoration(
-                  labelText: 'Agent instruction',
-                  hintText:
-                      'Example: Draft a concise status update and summarize blockers.',
+                  labelText: 'Automation Action',
                 ),
-              ),
-              const SizedBox(height: 10),
-              DropdownButtonFormField<AutomationMode>(
-                value: _mode,
-                decoration: const InputDecoration(labelText: 'Run mode'),
-                items:
-                    AutomationMode.values
-                        .map(
-                          (item) => DropdownMenuItem(
-                            value: item,
-                            child: Text(
-                              item == AutomationMode.execute
-                                  ? 'Execute and complete task'
-                                  : 'Suggest only',
-                            ),
-                          ),
-                        )
-                        .toList(),
+                items: const [
+                  DropdownMenuItem(
+                    value: AutomationExecutionType.email,
+                    child: Text('Send Email'),
+                  ),
+                  DropdownMenuItem(
+                    value: AutomationExecutionType.report,
+                    child: Text('Generate Report'),
+                  ),
+                  DropdownMenuItem(
+                    value: AutomationExecutionType.message,
+                    child: Text('Send Message'),
+                  ),
+                  DropdownMenuItem(
+                    value: AutomationExecutionType.notification,
+                    child: Text('Create Reminder Notification'),
+                  ),
+                ],
                 onChanged: (value) {
-                  if (value != null) setState(() => _mode = value);
+                  if (value != null) {
+                    setState(() => _executionType = value);
+                  }
                 },
               ),
               const SizedBox(height: 10),
               DropdownButtonFormField<int>(
-                value: _triggerMinutes,
-                decoration: const InputDecoration(labelText: 'Trigger time'),
-                items:
-                    const [5, 10, 30, 60]
-                        .map(
-                          (item) => DropdownMenuItem(
-                            value: item,
-                            child: Text('$item minutes before deadline'),
-                          ),
-                        )
-                        .toList(),
+                initialValue: _triggerMinutes,
+                decoration: const InputDecoration(labelText: 'Trigger Time'),
+                items: const [
+                  DropdownMenuItem(
+                    value: 5,
+                    child: Text('5 minutes before deadline'),
+                  ),
+                  DropdownMenuItem(
+                    value: 10,
+                    child: Text('10 minutes before deadline'),
+                  ),
+                  DropdownMenuItem(
+                    value: 30,
+                    child: Text('30 minutes before deadline'),
+                  ),
+                ],
                 onChanged: (value) {
-                  if (value != null) setState(() => _triggerMinutes = value);
+                  if (value != null) {
+                    setState(() => _triggerMinutes = value);
+                  }
                 },
+              ),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _recipientController,
+                keyboardType: TextInputType.emailAddress,
+                decoration: const InputDecoration(
+                  labelText: 'Recipient (optional)',
+                  hintText: 'Email address or contact',
+                ),
               ),
               const SizedBox(height: 14),
               SizedBox(
@@ -358,11 +360,14 @@ class _AutomationEditorSheetState extends State<_AutomationEditorSheet> {
                     await widget.controller.updateTaskAutomation(
                       widget.task,
                       enabled: _enabled,
-                      instruction: _instructionController.text,
-                      mode: _mode,
+                      executionType: _executionType,
+                      recipient: _recipientController.text,
                       triggerMinutes: _triggerMinutes,
                     );
-                    if (mounted) Navigator.of(context).pop();
+                    if (!mounted) {
+                      return;
+                    }
+                    Navigator.of(context).pop();
                   },
                 ),
               ),
@@ -371,5 +376,101 @@ class _AutomationEditorSheetState extends State<_AutomationEditorSheet> {
         ),
       ),
     );
+  }
+}
+
+class _AutomationHistory extends StatelessWidget {
+  final List<Task> tasks;
+
+  const _AutomationHistory({required this.tasks});
+
+  @override
+  Widget build(BuildContext context) {
+    final firestore = Get.find<FirestoreService>();
+    final auth = Get.find<AuthService>();
+    final userId = auth.getUserId();
+
+    if (userId == null) {
+      return const Center(
+        child: Text('Please sign in to view automation history.'),
+      );
+    }
+
+    final taskTitleById = <String, String>{
+      for (final task in tasks) task.id: task.title,
+    };
+
+    return StreamBuilder<List<AutomationLog>>(
+      stream: firestore.watchAutomationLogs(userId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final logs = snapshot.data ?? const <AutomationLog>[];
+        if (logs.isEmpty) {
+          return const Center(
+            child: Text(
+              'No automation runs yet. Completed executions appear here.',
+            ),
+          );
+        }
+
+        return ListView.separated(
+          padding: const EdgeInsets.fromLTRB(16, 10, 16, 16),
+          itemBuilder: (context, index) {
+            final log = logs[index];
+            final isSuccess = log.status.toLowerCase() == 'success';
+            final taskTitle = taskTitleById[log.taskId] ?? 'Task ${log.taskId}';
+
+            return ListTile(
+              tileColor: Theme.of(context).colorScheme.surfaceContainerLow,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              title: Text(taskTitle),
+              subtitle: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 4),
+                  Text('Action: ${_executionLabel(log.executionType)}'),
+                  Text(
+                    'Execution: ${DateFormat('MMM dd, yyyy hh:mm a').format(log.executionTime)}',
+                  ),
+                  Text(
+                    'Result: ${isSuccess ? 'Success' : 'Failed'}',
+                    style: TextStyle(
+                      color: isSuccess ? Colors.green : Colors.red,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ],
+              ),
+              trailing: Icon(
+                isSuccess ? Icons.check_circle : Icons.error,
+                color: isSuccess ? Colors.green : Colors.red,
+              ),
+            );
+          },
+          separatorBuilder: (context, index) => const SizedBox(height: 8),
+          itemCount: logs.length,
+        );
+      },
+    );
+  }
+
+  String _executionLabel(String value) {
+    switch (value) {
+      case 'email':
+        return 'Email Sent';
+      case 'report':
+        return 'Report Generated';
+      case 'message':
+        return 'Message Sent';
+      case 'notification':
+        return 'Reminder Notification';
+      default:
+        return value;
+    }
   }
 }

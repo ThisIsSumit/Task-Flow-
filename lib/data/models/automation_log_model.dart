@@ -4,9 +4,7 @@ class AutomationLog {
   final String id;
   final String taskId;
   final String userId;
-  final String actionType;
-  final String summary;
-  final String mode;
+  final String executionType;
   final String generatedContent;
   final DateTime executionTime;
   final String status;
@@ -15,9 +13,7 @@ class AutomationLog {
     required this.id,
     required this.taskId,
     required this.userId,
-    required this.actionType,
-    required this.summary,
-    required this.mode,
+    required this.executionType,
     required this.generatedContent,
     required this.executionTime,
     required this.status,
@@ -30,10 +26,10 @@ class AutomationLog {
       id: map['id'] ?? '',
       taskId: map['taskId'] ?? '',
       userId: map['userId'] ?? '',
-      actionType: map['actionType'] ?? '',
-      summary: map['summary'] ?? '',
-      mode: map['mode'] ?? 'execute',
-      generatedContent: map['generatedContent'] ?? '',
+      executionType:
+          (map['executionType'] ?? map['actionType'] ?? '').toString(),
+      generatedContent:
+          (map['generatedContent'] ?? map['summary'] ?? '').toString(),
       executionTime:
           executionTime is Timestamp
               ? executionTime.toDate()
@@ -47,9 +43,7 @@ class AutomationLog {
     return {
       'taskId': taskId,
       'userId': userId,
-      'actionType': actionType,
-      'summary': summary,
-      'mode': mode,
+      'executionType': executionType,
       'generatedContent': generatedContent,
       'executionTime': Timestamp.fromDate(executionTime),
       'status': status,

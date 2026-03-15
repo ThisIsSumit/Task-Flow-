@@ -1,36 +1,40 @@
-function buildReportContent(task, user) {
+function buildEmailTemplate(task) {
+  return {
+    subject: 'Task Update',
+    body: [
+      `This is an automated message regarding the task "${task.title}".`,
+      '',
+      'The report has been generated automatically.',
+    ].join('\n'),
+  };
+}
+
+function buildReportContent(task) {
   return [
-    `Automation Report`,
+    'Task Report',
+    '',
     `Task: ${task.title}`,
-    `Owner: ${user.name || user.email || task.userId}`,
+    `Status: ${task.status || 'pending'}`,
     `Deadline: ${task.dueDate.toISOString()}`,
-    `Summary: ${task.description || 'No description provided.'}`,
-    `Notes: ${task.notes || 'No notes added.'}`,
+    '',
+    'Summary generated automatically.',
   ].join('\n');
 }
 
-function buildMessageContent(task, user) {
-  return `Automated message for ${user.name || user.email || task.userId}: "${task.title}" reached its automation trigger and was processed by Task Flow.`;
+function buildMessageContent(task) {
+  return `Automated task update: "${task.title}" is still pending and reached its trigger window.`;
 }
 
-function buildMeetingLink(task) {
-  const endDate = new Date(task.dueDate.getTime() + 30 * 60 * 1000);
-  const params = new URLSearchParams({
-    action: 'TEMPLATE',
-    text: `Automation: ${task.title}`,
-    details: task.description || 'Scheduled automatically by Task Flow.',
-    dates: `${formatCalendarDate(task.dueDate)}/${formatCalendarDate(endDate)}`,
-  });
-
-  return `https://calendar.google.com/calendar/render?${params.toString()}`;
-}
-
-function formatCalendarDate(value) {
-  return value.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
+function buildNotificationPayload(task) {
+  return {
+    title: 'Task Flow Reminder',
+    body: `Task "${task.title}" is still pending and automation was triggered.`,
+  };
 }
 
 module.exports = {
-  buildMeetingLink,
+  buildEmailTemplate,
   buildMessageContent,
+  buildNotificationPayload,
   buildReportContent,
 };

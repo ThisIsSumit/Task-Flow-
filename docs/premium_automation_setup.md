@@ -1,135 +1,88 @@
-# Premium Automation Setup
+# Task Automation Setup
+
+## Product behavior
+
+Task automation is available to all users. When a task remains pending and reaches the configured trigger window before its deadline, Task Flow runs the configured action automatically and writes an execution log.
 
 ## Firestore schema
 
-### `users/{userId}`
-
-- `uid`: string
-- `email`: string
-- `name`: string
-- `subscriptionType`: `free` | `premium`
-- `subscriptionStartDate`: timestamp | null
-- `subscriptionEndDate`: timestamp | null
-- `taskStats`: map
-
 ### `users/{userId}/tasks/{taskId}`
 
-- Existing fields remain unchanged.
-- New automation fields:
-  - `status`: `pending` | `completed`
-  - `autoExecute`: boolean
-  - `automationInstruction`: string (free-text goal for the agent)
-  - `automationMode`: `suggest` | `execute`
-  - `triggerBeforeDeadline`: number (minutes)
-  - `automationStatus`: `enabled` | `disabled`
-  - `automationLastExecutedAt`: timestamp | null
-  - `generatedAutomationContent`: string | null
-  - `generatedAutomationSummary`: string | null
+Core fields:
+
+- `taskId` (document id)
+- `userId`: string
+- `title`: string
+- `description`: string
+- `dueDate`: timestamp
+- `status`: `pending` | `completed`
+
+Automation fields:
+
+- `autoExecute`: boolean
+- `executionType`: `email` | `report` | `message` | `notification`
+- `triggerBeforeDeadline`: number (minutes)
+- `recipient`: string
+- `automationStatus`: `enabled` | `disabled`
+- `automationLastExecutedAt`: timestamp | null
+- `generatedAutomationSummary`: string
+- `generatedAutomationContent`: string
 
 ### `automation_logs/{logId}`
 
+- `logId` (document id)
 - `taskId`: string
 - `userId`: string
-- `actionType`: string
-- `summary`: string
-- `mode`: `suggest` | `execute`
+- `executionType`: `email` | `report` | `message` | `notification`
 - `generatedContent`: string
 - `executionTime`: timestamp
 - `status`: `success` | `failed`
 
-## Flutter app changes included
+## Cloud Function pipeline
 
-- Premium gating in the task form
-- Paywall screen
-- Subscription state on the user model
-- In-app purchase service for Android/iOS
-- Automation settings saved with tasks
+`runTaskAutomation` runs every 5 minutes and performs this pipeline:
 
-## Mobile store setup
+1. Query tasks where `autoExecute == true` and `status == pending`
+2. Check if task is still pending
+3. Compute `deadline - triggerBeforeDeadline`
+4. If current time is within trigger window, run action executor
+5. Store execution result in `automation_logs`
+6. Disable automation and mark task completed on success
 
-Configure these product IDs in Google Play Console / App Store Connect:
+## Action executors
 
-- `taskflow_premium_monthly`
-- `taskflow_premium_yearly`
+Supported execution actions:
 
-The Flutter client currently maps those IDs in [lib/data/services/subscription_service.dart](../lib/data/services/subscription_service.dart).
+- `email`: sends templated (or AI-generated when configured) content to recipient
+- `report`: generates a structured task report
+- `message`: generates an automated pending-task message
+- `notification`: sends push notification (with token) or logs reminder content
 
-## Cloud Functions setup
+## Environment variables
 
-1. Install the Firebase CLI if not already installed.
-2. From the project root run:
+Create `functions/.env` and configure as needed:
+
+- Optional AI content generation:
+  - `GEMINI_API_KEY`
+- Required for `email` execution:
+  - `EMAIL_SMTP_HOST`
+  - `EMAIL_SMTP_PORT`
+  - `EMAIL_SMTP_USER`
+  - `EMAIL_SMTP_PASSWORD`
+  - `EMAIL_FROM`
+
+## Deploy functions
 
 ```bash
 cd functions
 npm install
-cd ..
 firebase deploy --only functions
 ```
 
-1. Optional for local testing:
+For emulator testing:
 
 ```bash
 cd functions
 npm install
-cd ..
 firebase emulators:start --only functions
 ```
-
-## Environment variables for email automation
-
-Create `functions/.env` (you can copy from `functions/.env.example`) and add:
-
-- `GEMINI_API_KEY`
-
-Optional email delivery settings (only needed when the agent selects email in `execute` mode):
-
-- `EMAIL_SMTP_HOST`
-- `EMAIL_SMTP_PORT`
-- `EMAIL_SMTP_USER`
-- `EMAIL_SMTP_PASSWORD`
-- `EMAIL_FROM`
-
-For production, store these in a secure secret manager flow before deployment.
-
-## Scheduling and behavior
-
-- `runTaskAutomation` runs every 5 minutes.
-- It scans tasks with automation enabled and pending status.
-- It checks if the trigger time has passed.
-- It verifies the user still has an active premium subscription.
-- It sends task context and user instruction to Gemini.
-- In `execute` mode, the task is completed after successful execution.
-- In `suggest` mode, output is generated and saved, but task remains pending.
-- On failure, automation is disabled and a failed log is written to avoid repeated retries.
-
-## Recommended folder structure
-
-```text
-lib/
-  data/
-    models/
-      task_model.dart
-      user_models.dart
-      automation_log_model.dart
-    services/
-      auth_service.dart
-      firestore_service.dart
-      notification_service.dart
-      subscription_service.dart
-  modules/
-    home_view.dart
-    subscription_view.dart
-functions/
-  src/
-    index.js
-    executors.js
-    templates.js
-docs/
-  premium_automation_setup.md
-```
-
-## Production notes
-
-- For real subscription validation, prefer server-side receipt verification or RevenueCat entitlements.
-- The provided `in_app_purchase` flow is a client-first integration and should be hardened before launch.
-- Cloud Functions collection group queries may require Firestore composite indexes once deployed.

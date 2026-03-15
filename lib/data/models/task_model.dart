@@ -6,6 +6,8 @@ enum AutomationMode { suggest, execute }
 
 enum AutomationStatus { enabled, disabled }
 
+enum AutomationExecutionType { email, report, message, notification }
+
 const Object _taskNoChange = Object();
 
 class SubTask {
@@ -54,6 +56,8 @@ class Task {
   final DateTime? lastRecurrenceAt;
   final List<SubTask> subtasks;
   final bool autoExecute;
+  final AutomationExecutionType executionType;
+  final String recipient;
   final String automationInstruction;
   final AutomationMode automationMode;
   final int triggerBeforeDeadline;
@@ -80,6 +84,8 @@ class Task {
     this.lastRecurrenceAt,
     this.subtasks = const [],
     this.autoExecute = false,
+    this.executionType = AutomationExecutionType.email,
+    this.recipient = '',
     this.automationInstruction = '',
     this.automationMode = AutomationMode.execute,
     this.triggerBeforeDeadline = 10,
@@ -107,6 +113,8 @@ class Task {
     Object? lastRecurrenceAt = _taskNoChange,
     List<SubTask>? subtasks,
     bool? autoExecute,
+    AutomationExecutionType? executionType,
+    String? recipient,
     String? automationInstruction,
     AutomationMode? automationMode,
     int? triggerBeforeDeadline,
@@ -142,6 +150,8 @@ class Task {
               : lastRecurrenceAt as DateTime?,
       subtasks: subtasks ?? this.subtasks,
       autoExecute: autoExecute ?? this.autoExecute,
+      executionType: executionType ?? this.executionType,
+      recipient: recipient ?? this.recipient,
       automationInstruction:
           automationInstruction ?? this.automationInstruction,
       automationMode: automationMode ?? this.automationMode,
@@ -182,6 +192,8 @@ class Task {
               : null,
       'subtasks': subtasks.map((item) => item.toMap()).toList(),
       'autoExecute': autoExecute,
+      'executionType': executionType.name,
+      'recipient': recipient,
       'automationInstruction': automationInstruction,
       'automationMode': automationMode.name,
       'triggerBeforeDeadline': triggerBeforeDeadline,
@@ -250,6 +262,11 @@ class Task {
               .map((item) => SubTask.fromMap(Map<String, dynamic>.from(item)))
               .toList(),
       autoExecute: map['autoExecute'] ?? false,
+      executionType: AutomationExecutionType.values.firstWhere(
+        (value) => value.name == map['executionType'],
+        orElse: () => AutomationExecutionType.email,
+      ),
+      recipient: (map['recipient'] ?? '').toString(),
       automationInstruction: (map['automationInstruction'] ?? '').toString(),
       automationMode: AutomationMode.values.firstWhere(
         (value) => value.name == map['automationMode'],

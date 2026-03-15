@@ -8,8 +8,6 @@ import '../data/models/task_model.dart';
 import '../data/services/firestore_service.dart';
 import '../data/services/auth_service.dart';
 import '../data/services/notification_service.dart';
-import '../data/services/subscription_service.dart';
-import '../routes/app_pages.dart';
 
 enum TaskSortOption { dueDate, priority, recent }
 
@@ -20,8 +18,6 @@ class HomeController extends GetxController {
   final AuthService _authService = Get.find<AuthService>();
   final NotificationService _notificationService =
       Get.find<NotificationService>();
-  final SubscriptionService _subscriptionService =
-      Get.find<SubscriptionService>();
   final Uuid _uuid = const Uuid();
   StreamSubscription<List<Task>>? _tasksSubscription;
 
@@ -40,7 +36,7 @@ class HomeController extends GetxController {
   final TextEditingController taskDescController = TextEditingController();
   final TextEditingController taskCategoryController = TextEditingController();
   final TextEditingController taskNotesController = TextEditingController();
-  final TextEditingController automationInstructionController =
+  final TextEditingController automationRecipientController =
       TextEditingController();
   final TextEditingController subtaskController = TextEditingController();
 
@@ -49,18 +45,15 @@ class HomeController extends GetxController {
   final Rx<RecurrenceType> selectedRecurrence = RecurrenceType.none.obs;
   final RxBool reminderEnabled = false.obs;
   final RxBool autoExecute = false.obs;
-  final Rx<AutomationMode> selectedAutomationMode = AutomationMode.execute.obs;
+  final Rx<AutomationExecutionType> selectedExecutionType =
+      AutomationExecutionType.email.obs;
   final RxInt triggerBeforeDeadline = 10.obs;
 
   DateTime? selectedDate;
   DateTime? selectedReminderDate;
   int selectedPriority = 2;
 
-  bool get isPremiumUser => _subscriptionService.isPremium.value;
-
-  // When kDevBypassSubscription is on, isPremiumUser is always true,
-  // so canConfigureAutomation will always return true in dev mode.
-  bool get canConfigureAutomation => isPremiumUser;
+  bool get canConfigureAutomation => true;
 
   @override
   void onInit() {
@@ -211,7 +204,7 @@ class HomeController extends GetxController {
     taskDescController.clear();
     taskCategoryController.clear();
     taskNotesController.clear();
-    automationInstructionController.clear();
+    automationRecipientController.clear();
     subtaskController.clear();
     draftSubtasks.clear();
 
@@ -221,7 +214,7 @@ class HomeController extends GetxController {
     reminderEnabled.value = false;
     selectedReminderDate = null;
     autoExecute.value = false;
-    selectedAutomationMode.value = AutomationMode.execute;
+    selectedExecutionType.value = AutomationExecutionType.email;
     triggerBeforeDeadline.value = 10;
     update();
   }
@@ -231,7 +224,7 @@ class HomeController extends GetxController {
     taskDescController.text = task.description;
     taskCategoryController.text = task.category;
     taskNotesController.text = task.notes;
-    automationInstructionController.text = task.automationInstruction;
+    automationRecipientController.text = task.recipient;
     draftSubtasks.assignAll(task.subtasks);
 
     selectedDate = task.dueDate;
@@ -240,17 +233,12 @@ class HomeController extends GetxController {
     reminderEnabled.value = task.reminderEnabled;
     selectedReminderDate = task.reminderAt;
     autoExecute.value = task.autoExecute;
-    selectedAutomationMode.value = task.automationMode;
+    selectedExecutionType.value = task.executionType;
     triggerBeforeDeadline.value = task.triggerBeforeDeadline;
     update();
   }
 
   Future<void> onAutomationToggleChanged(bool value) async {
-    if (value && !canConfigureAutomation) {
-      Get.toNamed(Routes.SUBSCRIPTION);
-      return;
-    }
-
     autoExecute.value = value;
     update();
   }
@@ -308,6 +296,14 @@ class HomeController extends GetxController {
         reminderEnabled: reminderEnabled.value,
         reminderAt: selectedReminderDate,
         subtasks: draftSubtasks.toList(),
+        autoExecute: autoExecute.value,
+        executionType: selectedExecutionType.value,
+        recipient: automationRecipientController.text.trim(),
+        triggerBeforeDeadline: triggerBeforeDeadline.value,
+        automationStatus:
+            autoExecute.value
+                ? AutomationStatus.enabled
+                : AutomationStatus.disabled,
       );
 
       final saved = await _firestoreService.addTask(userId, task);
@@ -359,6 +355,14 @@ class HomeController extends GetxController {
         reminderEnabled: reminderEnabled.value,
         reminderAt: selectedReminderDate,
         subtasks: draftSubtasks.toList(),
+        autoExecute: autoExecute.value,
+        executionType: selectedExecutionType.value,
+        recipient: automationRecipientController.text.trim(),
+        triggerBeforeDeadline: triggerBeforeDeadline.value,
+        automationStatus:
+            autoExecute.value
+                ? AutomationStatus.enabled
+                : AutomationStatus.disabled,
       );
 
       await _firestoreService.updateTask(userId, updated);
@@ -507,23 +511,13 @@ class HomeController extends GetxController {
   Future<void> updateTaskAutomation(
     Task task, {
     required bool enabled,
-    required String instruction,
-    required AutomationMode mode,
+    required AutomationExecutionType executionType,
+    required String recipient,
     required int triggerMinutes,
   }) async {
     final userId = _authService.getUserId();
     if (userId == null) {
       Get.snackbar('Error', 'User not authenticated');
-      return;
-    }
-
-    if (enabled && !canConfigureAutomation) {
-      Get.toNamed(Routes.SUBSCRIPTION);
-      return;
-    }
-
-    if (enabled && instruction.trim().isEmpty) {
-      Get.snackbar('Error', 'Please provide an agent instruction');
       return;
     }
 
@@ -538,8 +532,10 @@ class HomeController extends GetxController {
     try {
       final updated = task.copyWith(
         autoExecute: enabled,
-        automationInstruction: enabled ? instruction.trim() : '',
-        automationMode: mode,
+        executionType: executionType,
+        recipient: enabled ? recipient.trim() : '',
+        automationInstruction: '',
+        automationMode: AutomationMode.execute,
         triggerBeforeDeadline: triggerMinutes,
         automationStatus:
             enabled ? AutomationStatus.enabled : AutomationStatus.disabled,
